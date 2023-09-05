@@ -1,11 +1,7 @@
-import React, { useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import Papa from "papaparse";
-import { Line2 } from "three/examples/jsm/lines/Line2.js";
-import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
-import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
-import * as dat from "dat.gui"; // Import dat.GUI
 import { colors } from "../assets/colors.js";
 
 function ThreeScene() {
@@ -13,7 +9,6 @@ function ThreeScene() {
 
   useEffect(() => {
     let scene, camera, renderer;
-    let gui; // Declare GUI variable
 
     // Create a scene
     scene = new THREE.Scene();
@@ -26,7 +21,7 @@ function ThreeScene() {
       1,
       200
     );
-    camera.position.set(0, 50, 0);
+    camera.position.set(0, 0, 50);
 
     // Create a renderer
     renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -60,19 +55,19 @@ function ThreeScene() {
     });
 
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-    plane.rotation.x = -0.5 * Math.PI;
 
     plane.position.x = 2.4;
-    plane.position.z = 2.8;
+    plane.position.y = -2.8;
     scene.add(plane);
 
     // Create gridHelper
-    const gridHelper = new THREE.GridHelper(100, 10);
+    // const gridHelper = new THREE.GridHelper(100, 1000);
+    // gridHelper.rotation.x = -0.5 * Math.PI;
     // scene.add(gridHelper);
 
     const startPoints = {};
-    const xOffset = 104; // Add your X offset here
-    const yOffset = 75; // Add your Y offset here
+    const xOffset = 104; // Add your X offset here 104
+    const yOffset = 75; // Add your Y offset here 75
 
     // Create a set to store unique layers
     const uniqueLayers = new Set();
@@ -96,86 +91,54 @@ function ThreeScene() {
 
           if (!startPoints[polylineID]) {
             startPoints[polylineID] = {
-              x: parseFloat(row.X) - xOffset,
-              y: parseFloat(row.Y) - yOffset,
+              x: parseFloat(row.X).toFixed(6) - xOffset,
+              y: parseFloat(row.Y).toFixed(6) - yOffset,
             };
           } else {
             const startPoint = startPoints[polylineID];
             const endPoint = {
-              x: parseFloat(row.X) - xOffset,
-              y: parseFloat(row.Y) - yOffset,
+              x: parseFloat(row.X).toFixed(6) - xOffset,
+              y: parseFloat(row.Y).toFixed(6) - yOffset,
             };
 
-            // Create a line segment from start to end points
-            const geometry = new THREE.BufferGeometry().setFromPoints([
-              new THREE.Vector3(startPoint.x, 0.01, -startPoint.y),
-              new THREE.Vector3(endPoint.x, 0.01, -endPoint.y),
-            ]);
+            let beam_height = 1;
+            let beam_width = 0.2;
 
-            // Create a material for the line with the specified color
-            const material = new THREE.LineBasicMaterial({
+            // Create profile for extrusion
+            let shape = new THREE.Shape();
+            shape.moveTo(0, beam_width / 2);
+            shape.lineTo(beam_height, beam_width / 2);
+            shape.lineTo(beam_height, -beam_width / 2);
+            shape.lineTo(0, -beam_width / 2);
+            shape.lineTo(0, beam_width / 2);
+
+            // Create a path for extrusion
+            let path = new THREE.LineCurve3(
+              new THREE.Vector3(startPoint.x, startPoint.y, beam_height),
+              new THREE.Vector3(endPoint.x, endPoint.y, beam_height)
+            );
+
+            // Create an extrusion geometry
+            let extrudeSettings = {
+              steps: 100, // The higher the number here, the smoother your object will be
+              bevelEnabled: false,
+              extrudePath: path,
+            };
+            let geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+
+            // Create a material for the extrusion
+            let material = new THREE.MeshBasicMaterial({
               color: new THREE.Color(layerColors[layer]),
-              linewidth: 1,
             });
 
-            // Create the line and add it to the scene
-            const line = new THREE.Line(geometry, material);
-
-            scene.add(line);
-
-            // // Create a geometry for the line using LineGeometry
-            // const geometry = new LineGeometry();
-            // geometry.setPositions([
-            //   startPoint.x,
-            //   1,
-            //   startPoint.y,
-            //   endPoint.x,
-            //   1,
-            //   endPoint.y,
-            // ]);
-
-            // // Create a material for the line with the specified color
-            // const material = new LineMaterial({
-            //   color: new THREE.Color(colors[i]),
-            //   linewidth: 0.005, // Adjust this value to set the line thickness
-            //   vertexColors: false,
-            // });
-
-            // const line = new Line2(geometry, material);
-            // // line.computeLineDistances(); // Compute line distances if needed
-            // scene.add(line);
+            let extrusion = new THREE.Mesh(geometry, material);
+            scene.add(extrusion);
 
             // Store the layer information in userData
-            line.userData.layer = row.Layer;
+            extrusion.userData.layer = row.Layer;
             uniqueLayers.add(row.Layer);
           }
         });
-
-        // Create a function to set up the GUI
-        function setupGUI() {
-          gui = new dat.GUI();
-          const layers = Array.from(uniqueLayers);
-
-          // Create an object to store GUI properties
-          const guiProperties = {
-            selectedLayer: layers[0], // Default to the first layer
-          };
-
-          // Add a dropdown for selecting layers
-          gui.add(guiProperties, "selectedLayer", layers).onChange((value) => {
-            // Hide or show lines based on the selected layer
-            scene.children.forEach((child) => {
-              if (child.userData.layer === value) {
-                child.visible = true;
-              } else {
-                child.visible = false;
-              }
-            });
-          });
-        }
-
-        // Call the setupGUI function after loading your CSV data
-        setupGUI();
       });
 
     // Animation loop
@@ -197,10 +160,6 @@ function ThreeScene() {
     // Clean up when component unmounts
     return () => {
       renderer.dispose();
-      // Remove dat.GUI if it's open
-      if (gui) {
-        gui.destroy();
-      }
     };
   }, []);
 
