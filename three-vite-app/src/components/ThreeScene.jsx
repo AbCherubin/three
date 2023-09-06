@@ -17,7 +17,7 @@ function ThreeScene() {
     // Create a camera
     camera = new THREE.PerspectiveCamera(
       40,
-      window.innerWidth / window.innerHeight,
+      (window.innerWidth / 1.2) / (window.innerHeight / 1.2),
       1,
       200
     );
@@ -26,7 +26,8 @@ function ThreeScene() {
     // Create a renderer
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    //renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(window.innerWidth / 1.2, window.innerHeight / 1.2);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
     // Append renderer's canvas only once on mount
@@ -52,6 +53,7 @@ function ThreeScene() {
       side: THREE.DoubleSide,
       transparent: true, // Enable transparency
       opacity: 0.9,
+      color: new THREE.Color(0xf0f0f0)
     });
 
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
@@ -101,7 +103,7 @@ function ThreeScene() {
               y: parseFloat(row.Y).toFixed(6) - yOffset,
             };
 
-            let beam_height = 1;
+            let beam_height = 0.4;
             let beam_width = 0.2;
 
             // Create profile for extrusion

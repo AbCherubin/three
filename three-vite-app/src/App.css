@@ -43,3 +43,11 @@
 .read-the-docs {
   color: #888;
 }
+
+body {
+  background-image: url('./assets/autoboq.jpg');
+  background-repeat: no-repeat;
+  background-position: top right;
+  background-color: #f0f0f0;
+  background-size: 250px 250px; /* Set width and height */
+}
