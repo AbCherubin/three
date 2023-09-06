@@ -60,6 +60,17 @@ function ThreeScene() {
     plane.position.y = -2.8;
     scene.add(plane);
 
+    const sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+    const sphereMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    const sphereHeight = 2;
+    sphere.position.set(0, 0, sphereHeight); // Initial position
+    scene.add(sphere);
+
+    let targetPositions = [];
+    let targetPositionIndex = 0;
+    const speed = 0.05; // Speed of movement
+    const lerpFactor = 0.05;
     // Create gridHelper
     // const gridHelper = new THREE.GridHelper(100, 1000);
     // gridHelper.rotation.x = -0.5 * Math.PI;
@@ -68,9 +79,6 @@ function ThreeScene() {
     const startPoints = {};
     const xOffset = 104; // Add your X offset here 104
     const yOffset = 75; // Add your Y offset here 75
-
-    // Create a set to store unique layers
-    const uniqueLayers = new Set();
 
     // Define a mapping of layers to colors
     const layerColors = {};
@@ -133,10 +141,14 @@ function ThreeScene() {
 
             let extrusion = new THREE.Mesh(geometry, material);
             scene.add(extrusion);
-
-            // Store the layer information in userData
-            extrusion.userData.layer = row.Layer;
-            uniqueLayers.add(row.Layer);
+            targetPositions.push({
+              start: new THREE.Vector3(
+                startPoint.x,
+                startPoint.y,
+                sphereHeight
+              ),
+              stop: new THREE.Vector3(endPoint.x, endPoint.y, sphereHeight),
+            });
           }
         });
       });
@@ -145,6 +157,21 @@ function ThreeScene() {
     const animate = () => {
       requestAnimationFrame(animate);
       controls.update();
+      if (targetPositions[targetPositionIndex]) {
+        const targetPosition = targetPositions[targetPositionIndex];
+
+        sphere.position.add(
+          targetPosition.stop.clone().sub(sphere.position).multiplyScalar(speed)
+        );
+        if (sphere.position.distanceTo(targetPosition.stop) < 0.1) {
+          targetPositionIndex =
+            (targetPositionIndex + 1) % targetPositions.length;
+          sphere.position.lerp(
+            targetPositions[targetPositionIndex].start,
+            lerpFactor
+          );
+        }
+      }
       renderer.render(scene, camera);
     };
 
