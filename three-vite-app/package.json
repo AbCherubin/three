@@ -17,6 +17,7 @@
     "react-dom": "^18.2.0",
     "react-table": "^7.8.0",
     "three": "^0.155.0",
+    "three-bvh-csg": "^0.0.10",
     "three.meshline": "^1.4.0",
     "threejs-meshline": "^2.0.12"
   },
@@ -28,6 +29,6 @@
     "eslint-plugin-react": "^7.32.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.3",
-    "vite": "^4.4.5"
+    "vite": "^4.4.9"
   }
 }
