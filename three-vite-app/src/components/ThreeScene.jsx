@@ -17,17 +17,17 @@ function ThreeScene() {
     // Create a camera
     camera = new THREE.PerspectiveCamera(
       40,
-      (window.innerWidth / 1.2) / (window.innerHeight / 1.2),
+      window.innerWidth / window.innerHeight,
       1,
       200
     );
-    camera.position.set(0, 0, 50);
+    camera.position.set(0, 50, 0);
 
     // Create a renderer
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     //renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setSize(window.innerWidth / 1.2, window.innerHeight / 1.2);
+    renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
     // Append renderer's canvas only once on mount
@@ -35,31 +35,45 @@ function ThreeScene() {
       sceneRef.current.appendChild(renderer.domElement);
     }
 
+    // lights
+    const ambient = new THREE.HemisphereLight(0xffffff, 0xbfd4d2, 3);
+    scene.add(ambient);
+    // Create a directional light
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    directionalLight.position.set(1, 4, 3).multiplyScalar(3);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.setScalar(2048);
+    directionalLight.shadow.bias = -1e-4;
+    directionalLight.shadow.normalBias = 1e-4;
+    scene.add(directionalLight);
+
     // Create OrbitControls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, 0, 0);
-    controls.update();
+
     controls.enablePan = true;
     controls.enableDamping = true;
     controls.minDistance = 5;
     controls.maxDistance = 80;
     controls.enableRotate = true;
+    controls.update();
 
     // Create plane
-    const planeGeometry = new THREE.PlaneGeometry(1974 / 34.5, 1372 / 34.5);
+    const planeGeometry = new THREE.PlaneGeometry(1974 / 34.3, 1372 / 34.3);
     const texture = new THREE.TextureLoader().load("/src/assets/plan.png");
     const planeMaterial = new THREE.MeshBasicMaterial({
       map: texture,
       side: THREE.DoubleSide,
       transparent: true, // Enable transparency
       opacity: 0.9,
-      color: new THREE.Color(0xf0f0f0)
+      color: new THREE.Color(0xf0f0f0),
     });
 
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
 
-    plane.position.x = 2.4;
-    plane.position.y = -2.8;
+    plane.position.x = 2.2;
+    plane.position.z = 2.8;
+    plane.rotation.x = -0.5 * Math.PI;
     scene.add(plane);
 
     // Create gridHelper
@@ -129,11 +143,12 @@ function ThreeScene() {
             let geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
 
             // Create a material for the extrusion
-            let material = new THREE.MeshBasicMaterial({
+            let material = new THREE.MeshStandardMaterial({
               color: new THREE.Color(layerColors[layer]),
             });
 
             let extrusion = new THREE.Mesh(geometry, material);
+            extrusion.rotation.x = -0.5 * Math.PI;
             scene.add(extrusion);
 
             // Store the layer information in userData
@@ -146,6 +161,7 @@ function ThreeScene() {
     // Animation loop
     const animate = () => {
       requestAnimationFrame(animate);
+
       controls.update();
       renderer.render(scene, camera);
     };
