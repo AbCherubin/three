@@ -71,8 +71,8 @@ function ThreeScene() {
 
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
 
-    plane.position.x = 2.2;
-    plane.position.z = 2.8;
+    plane.position.x = 2.6;
+    plane.position.z = -0.7;
     plane.rotation.x = -0.5 * Math.PI;
     scene.add(plane);
 
@@ -82,8 +82,8 @@ function ThreeScene() {
     // scene.add(gridHelper);
 
     const startPoints = {};
-    const xOffset = 104; // Add your X offset here 104
-    const yOffset = 75; // Add your Y offset here 75
+    const xOffset = 0; // Add your X offset here 104
+    const yOffset = 0; // Add your Y offset here 75
 
     // Create a set to store unique layers
     const uniqueLayers = new Set();
@@ -117,8 +117,8 @@ function ThreeScene() {
               y: parseFloat(row.Y).toFixed(6) - yOffset,
             };
 
-            let beam_height = 0.4;
-            let beam_width = 0.2;
+            let beam_height = 3;
+            let beam_width = 0.15;
 
             // Create profile for extrusion
             let shape = new THREE.Shape();
