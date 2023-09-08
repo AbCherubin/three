@@ -9,8 +9,12 @@ def extract_lwpolyline_properties(dxf_file):
     msp = doc.modelspace()
 
     data = []
+    num_polylines = 0  # Initialize a counter for polylines
+    num_lines = 0  # Initialize a counter for lines
+
     for entity in msp:
         if entity.dxftype() == 'LWPOLYLINE':
+            num_polylines += 1  # Increment the polyline counter
             points = entity.get_points('xyb')
             is_closed = entity.closed  # Check if the polyline is closed
             for index, point in enumerate(points):
@@ -34,6 +38,7 @@ def extract_lwpolyline_properties(dxf_file):
                     'Y': first_point[1],
                 })
         elif entity.dxftype() == 'LINE':
+            num_lines += 1  # Increment the line counter
             start_point = (entity.dxf.start.x, entity.dxf.start.y)
             end_point = (entity.dxf.end.x, entity.dxf.end.y)
             if entity.dxf.layer.startswith('-'):
@@ -52,18 +57,20 @@ def extract_lwpolyline_properties(dxf_file):
                     'Y': end_point[1],
                 })
 
-    return data
+    return data, num_polylines, num_lines
 
 def main():
     Tk().withdraw()  # this will hide the main tkinter window
     filename = askopenfilename()  # this will open a file dialogue
 
-    data = extract_lwpolyline_properties(filename)
+    data, num_polylines, num_lines = extract_lwpolyline_properties(filename)
 
     df = pd.DataFrame(data)
-    csv_file = os.path.splitext(filename)[0] + '.csv'
+    csv_file = 'cubes.csv'  # Change the filename here
     df.to_csv(csv_file, index=False)
+
+    print(f"Total polylines extracted: {num_polylines}")
+    print(f"Total lines extracted: {num_lines}")
 
 if __name__ == "__main__":
     main()
-
