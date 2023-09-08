@@ -21,11 +21,12 @@ function ThreeScene() {
       1,
       200
     );
-    camera.position.set(0, 0, 50);
+    camera.position.set(0, 50, 0);
 
     // Create a renderer
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
+    //renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
@@ -34,43 +35,47 @@ function ThreeScene() {
       sceneRef.current.appendChild(renderer.domElement);
     }
 
+    // lights
+    const ambient = new THREE.HemisphereLight(0xffffff, 0xbfd4d2, 3);
+    scene.add(ambient);
+    // Create a directional light
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    directionalLight.position.set(1, 4, 3).multiplyScalar(3);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.setScalar(2048);
+    directionalLight.shadow.bias = -1e-4;
+    directionalLight.shadow.normalBias = 1e-4;
+    scene.add(directionalLight);
+
     // Create OrbitControls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, 0, 0);
-    controls.update();
+
     controls.enablePan = true;
     controls.enableDamping = true;
     controls.minDistance = 5;
     controls.maxDistance = 80;
     controls.enableRotate = true;
+    controls.update();
 
     // Create plane
-    const planeGeometry = new THREE.PlaneGeometry(1974 / 34.5, 1372 / 34.5);
+    const planeGeometry = new THREE.PlaneGeometry(1974 / 34.3, 1372 / 34.3);
     const texture = new THREE.TextureLoader().load("/src/assets/plan.png");
     const planeMaterial = new THREE.MeshBasicMaterial({
       map: texture,
       side: THREE.DoubleSide,
       transparent: true, // Enable transparency
       opacity: 0.9,
+      color: new THREE.Color(0xf0f0f0),
     });
 
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
 
-    plane.position.x = 2.4;
-    plane.position.y = -2.8;
+    plane.position.x = 2.2;
+    plane.position.z = 2.8;
+    plane.rotation.x = -0.5 * Math.PI;
     scene.add(plane);
 
-    const sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-    const sphereMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    const sphereHeight = 2;
-    sphere.position.set(0, 0, sphereHeight); // Initial position
-    scene.add(sphere);
-
-    let targetPositions = [];
-    let targetPositionIndex = 0;
-    const speed = 0.05; // Speed of movement
-    const lerpFactor = 0.05;
     // Create gridHelper
     // const gridHelper = new THREE.GridHelper(100, 1000);
     // gridHelper.rotation.x = -0.5 * Math.PI;
@@ -79,6 +84,9 @@ function ThreeScene() {
     const startPoints = {};
     const xOffset = 104; // Add your X offset here 104
     const yOffset = 75; // Add your Y offset here 75
+
+    // Create a set to store unique layers
+    const uniqueLayers = new Set();
 
     // Define a mapping of layers to colors
     const layerColors = {};
@@ -109,7 +117,7 @@ function ThreeScene() {
               y: parseFloat(row.Y).toFixed(6) - yOffset,
             };
 
-            let beam_height = 1;
+            let beam_height = 0.4;
             let beam_width = 0.2;
 
             // Create profile for extrusion
@@ -135,20 +143,17 @@ function ThreeScene() {
             let geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
 
             // Create a material for the extrusion
-            let material = new THREE.MeshBasicMaterial({
+            let material = new THREE.MeshStandardMaterial({
               color: new THREE.Color(layerColors[layer]),
             });
 
             let extrusion = new THREE.Mesh(geometry, material);
+            extrusion.rotation.x = -0.5 * Math.PI;
             scene.add(extrusion);
-            targetPositions.push({
-              start: new THREE.Vector3(
-                startPoint.x,
-                startPoint.y,
-                sphereHeight
-              ),
-              stop: new THREE.Vector3(endPoint.x, endPoint.y, sphereHeight),
-            });
+
+            // Store the layer information in userData
+            extrusion.userData.layer = row.Layer;
+            uniqueLayers.add(row.Layer);
           }
         });
       });
@@ -156,22 +161,8 @@ function ThreeScene() {
     // Animation loop
     const animate = () => {
       requestAnimationFrame(animate);
-      controls.update();
-      if (targetPositions[targetPositionIndex]) {
-        const targetPosition = targetPositions[targetPositionIndex];
 
-        sphere.position.add(
-          targetPosition.stop.clone().sub(sphere.position).multiplyScalar(speed)
-        );
-        if (sphere.position.distanceTo(targetPosition.stop) < 0.1) {
-          targetPositionIndex =
-            (targetPositionIndex + 1) % targetPositions.length;
-          sphere.position.lerp(
-            targetPositions[targetPositionIndex].start,
-            lerpFactor
-          );
-        }
-      }
+      controls.update();
       renderer.render(scene, camera);
     };
 
