@@ -122,75 +122,48 @@ function ThreeScene() {
     // Define a mapping of layers to colors
     const layerColors = {};
 
-    fetch("/src/assets/cubes.csv")
-      .then((response) => response.text())
-      .then((data) => {
-        const parsedData = Papa.parse(data, { header: true }).data;
-
-        parsedData.forEach((row) => {
-          const polylineID = row["Polyline ID"];
-          const layer = row.Layer;
-          if (!layerColors[layer]) {
-            // If the layer does not exist in the mapping, assign a color
-            layerColors[layer] =
-              colors[Object.keys(layerColors).length % colors.length];
+    Papa.parse("/src/assets/cubes.csv", {
+      download: true,
+      header: true,
+      dynamicTyping: true,
+      complete: function (results) {
+        let polylinePoints = {};  // Store points for each polyline
+        let points = [];
+        results.data.forEach((row) => {
+          const polylineID = row.Polyline;
+          
+          if (!polylinePoints[polylineID]) {
+            polylinePoints[polylineID] = []; // Initialize the points array for this polyline
           }
-
-          if (!startPoints[polylineID]) {
-            startPoints[polylineID] = {
+          
+          const point = {
               x: parseFloat(row.X).toFixed(6) - xOffset,
               y: parseFloat(row.Y).toFixed(6) - yOffset,
-            };
-          } else {
-            const startPoint = startPoints[polylineID];
-            const endPoint = {
-              x: parseFloat(row.X).toFixed(6) - xOffset,
-              y: parseFloat(row.Y).toFixed(6) - yOffset,
-            };
+          };
 
-            let beam_height = 4;
-            let beam_width = 0.01;
+          beam_height = 0.1
 
-            // Create profile for extrusion
-            let shape = new THREE.Shape();
-            shape.moveTo(0, beam_width / 2);
-            shape.lineTo(beam_height, beam_width / 2);
-            shape.lineTo(beam_height, -beam_width / 2);
-            shape.lineTo(0, -beam_width / 2);
-            shape.lineTo(0, beam_width / 2);
-
-            // Create a path for extrusion
-            let path = new THREE.LineCurve3(
-              new THREE.Vector3(startPoint.x, startPoint.y, beam_height),
-              new THREE.Vector3(endPoint.x, endPoint.y, beam_height)
-            );
-
-            // Create an extrusion geometry
-            let extrudeSettings = {
-              steps: 100, // The higher the number here, the smoother your object will be
-              bevelEnabled: false,
-              extrudePath: path,
-            };
-            let geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-
-            // Create a material for the extrusion
-            let material = new THREE.MeshStandardMaterial({
-              color: new THREE.Color(layerColors[layer]),
-              flatShading: true,
-            });
-
-            let extrusion = new THREE.Mesh(geometry, material);
-            extrusion.rotation.x = -0.5 * Math.PI;
-            extrusion.castShadow = true;
-            extrusion.receiveShadow = true;
-            scene.add(extrusion);
-
-            // Store the layer information in userData
-            extrusion.userData.layer = row.Layer;
-            uniqueLayers.add(row.Layer);
+          polylinePoints[polylineID].push(new THREE.Vector3(point.x, point.y, beam_height));
+          
+          
+          // When all the rows have been processed, create the extrusion for each polyline
+          // You can place this in another loop if not all the points are expected to be in one CSV file
+          for (let polylineID in polylinePoints) {
+                let path = new THREE.CatmullRomCurve3(polylinePoints[polylineID]);
+                console.log(polylinePoints[polylineID]);
+                let extrudeSettings = {
+                  steps: 100,
+                  bevelEnabled: false,
+                  extrudePath: path,
+                };
+                let geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+                let extrusion = new THREE.Mesh(geometry, material);
+                scene.add(extrusion);
           }
         });
-      });
+      },
+});
+
     const texture_logo = new THREE.TextureLoader().load(
       "/src/assets/autoboq.jpg"
     );

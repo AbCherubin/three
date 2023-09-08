@@ -69,6 +69,9 @@ def main():
     csv_file = 'cubes.csv'  # Change the filename here
     df.to_csv(csv_file, index=False)
 
+    # Print both the input file path and the save path
+    print(f"Input file: {filename}")
+    print(f"Saved CSV file: {csv_file}")
     print(f"Total polylines extracted: {num_polylines}")
     print(f"Total lines extracted: {num_lines}")
 
