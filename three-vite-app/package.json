@@ -19,7 +19,8 @@
     "react-table": "^7.8.0",
     "three": "^0.155.0",
     "three.meshline": "^1.4.0",
-    "threejs-meshline": "^2.0.12"
+    "threejs-meshline": "^2.0.12",
+    "web-ifc-three": "^0.0.125"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",

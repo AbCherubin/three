@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import * as THREE from "three";
 import proj4 from "proj4";
 
@@ -6,7 +7,9 @@ function KMLViewer() {
   const sceneRef = useRef(null);
   const cameraRef = useRef(null);
   const rendererRef = useRef(null);
-
+  const EPSG3857_offsetX = 11214913.406111;
+  const EPSG3857_offsetY = 1537202.143335;
+  const EPSG3857_RotationY = 1.82145115;
   // Define the projection strings for EPSG:4326 (WGS 84) and EPSG:3857 (Web Mercator)
   proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs");
   proj4.defs(
@@ -20,10 +23,10 @@ function KMLViewer() {
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(
-      75,
+      45,
       window.innerWidth / window.innerHeight,
       0.1,
-      1000
+      10000
     );
     cameraRef.current = camera;
 
@@ -33,8 +36,17 @@ function KMLViewer() {
     document.body.appendChild(renderer.domElement);
 
     // Set the camera position
-    camera.position.set(11215234.941874081, 1537882.7148304281, 100);
+    camera.position.set(0, 4000, 0);
 
+    // Create OrbitControls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0, 0);
+    controls.update();
+    controls.enablePan = true;
+    controls.enableDamping = true;
+    controls.minDistance = 5;
+    controls.maxDistance = 4000;
+    controls.enableRotate = true;
     // Fetch and parse the KML data when the component mounts
     fetchAndParseKML();
 
@@ -49,6 +61,12 @@ function KMLViewer() {
 
     animate();
 
+    window.onresize = function () {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    };
     // Clean up Three.js resources when the component unmounts
     return () => {
       const domElement = rendererRef.current.domElement;
@@ -111,7 +129,7 @@ function KMLViewer() {
   // Display parsed KML data on a plane
   function displayKMLData(data) {
     // Create a plane geometry
-    const geometry = new THREE.PlaneGeometry(10, 10, 32, 32);
+    const geometry = new THREE.PlaneGeometry(100, 100, 32, 32);
     const material = new THREE.MeshBasicMaterial({
       color: 0xffff00,
       side: THREE.DoubleSide,
@@ -121,10 +139,15 @@ function KMLViewer() {
 
     // Position the plane as needed
     plane.rotation.x = -Math.PI / 2;
-    plane.position.set(11215234.941874081, 1537882.7148304281, 0);
+    plane.position.set(0, 0, 0);
     // Create a line mesh using the converted KML data
+    console.log(data);
     data.forEach((vertices) => {
       const lineGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
+      lineGeometry.translate(-EPSG3857_offsetX, -EPSG3857_offsetY, 0);
+      lineGeometry.rotateX(-Math.PI / 2);
+      lineGeometry.rotateY(EPSG3857_RotationY);
+
       const line = new THREE.Line(
         lineGeometry,
         new THREE.LineBasicMaterial({ color: 0xff0000 })
