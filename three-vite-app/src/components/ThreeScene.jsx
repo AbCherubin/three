@@ -120,7 +120,7 @@ function ThreeScene() {
           const extrusionMaterial = new THREE.MeshStandardMaterial({
             color: 0xff0000,
           }); // Red color material
-          const depth = 0.2; // Adjust this value based on your data
+          const depth = 0.4; // Adjust this value based on your data
 
           const polylineShape = new THREE.Shape(); // Create a single shape for the entire polyline
           // Parse the first data point
@@ -153,7 +153,7 @@ function ThreeScene() {
           const object = new THREE.Mesh(geometry, extrusionMaterial);
 
           // Position the object at (0, 0, 0) or adjust as needed
-          object.position.set(0, 0, 0);
+          object.position.set(0, 0, -depth / 2);
           //  object.rotation.x = -0.5 * Math.PI;
 
           // Add the object to the scene
