@@ -2,7 +2,6 @@ import { useRef, useEffect } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import Papa from "papaparse";
-import { colors } from "../assets/colors.js";
 
 function ThreeScene() {
   const sceneRef = useRef(null);
@@ -112,57 +111,56 @@ function ThreeScene() {
     // gridHelper.rotation.x = -0.5 * Math.PI;
     // scene.add(gridHelper);
 
-    const startPoints = {};
-    const xOffset = 0; // Add your X offset here 104
-    const yOffset = 0; // Add your Y offset here 75
-
-    // Create a set to store unique layers
-    const uniqueLayers = new Set();
-
-    // Define a mapping of layers to colors
-    const layerColors = {};
-
     Papa.parse("/src/assets/cubes.csv", {
       download: true,
       header: true,
       dynamicTyping: true,
       complete: function (results) {
-        let polylinePoints = {};  // Store points for each polyline
-        let points = [];
-        results.data.forEach((row) => {
-          const polylineID = row.Polyline;
-          
-          if (!polylinePoints[polylineID]) {
-            polylinePoints[polylineID] = []; // Initialize the points array for this polyline
-          }
-          
-          const point = {
-              x: parseFloat(row.X).toFixed(6) - xOffset,
-              y: parseFloat(row.Y).toFixed(6) - yOffset,
+        if (results.data && results.data.length > 0) {
+          const extrusionMaterial = new THREE.MeshStandardMaterial({
+            color: 0xff0000,
+          }); // Red color material
+          const depth = 0.2; // Adjust this value based on your data
+
+          const polylineShape = new THREE.Shape(); // Create a single shape for the entire polyline
+          // Parse the first data point
+          const firstRow = results.data[0];
+          const firstX = parseFloat(firstRow.X);
+          const firstZ = parseFloat(firstRow.Y); // Use 'z' for the Y coordinate
+
+          // Move to the starting point
+          polylineShape.moveTo(firstX, firstZ);
+          results.data.forEach((row) => {
+            // Parse X and Y coordinates from CSV
+            const x = parseFloat(row.X);
+            const z = parseFloat(row.Y); // Use 'z' for the Y coordinate
+
+            // Add points to the polyline shape
+            polylineShape.lineTo(x, z);
+          });
+
+          // Extrude the entire polyline shape along the Y-axis to create a 3D object
+          const extrudeSettings = {
+            depth: depth, // Extrusion depth based on your yOffset
+            bevelEnabled: false,
           };
+          const geometry = new THREE.ExtrudeGeometry(
+            polylineShape,
+            extrudeSettings
+          );
 
-          beam_height = 0.1
+          // Create a mesh with the red material
+          const object = new THREE.Mesh(geometry, extrusionMaterial);
 
-          polylinePoints[polylineID].push(new THREE.Vector3(point.x, point.y, beam_height));
-          
-          
-          // When all the rows have been processed, create the extrusion for each polyline
-          // You can place this in another loop if not all the points are expected to be in one CSV file
-          for (let polylineID in polylinePoints) {
-                let path = new THREE.CatmullRomCurve3(polylinePoints[polylineID]);
-                console.log(polylinePoints[polylineID]);
-                let extrudeSettings = {
-                  steps: 100,
-                  bevelEnabled: false,
-                  extrudePath: path,
-                };
-                let geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-                let extrusion = new THREE.Mesh(geometry, material);
-                scene.add(extrusion);
-          }
-        });
+          // Position the object at (0, 0, 0) or adjust as needed
+          object.position.set(0, 0, 0);
+          //  object.rotation.x = -0.5 * Math.PI;
+
+          // Add the object to the scene
+          scene.add(object);
+        }
       },
-});
+    });
 
     const texture_logo = new THREE.TextureLoader().load(
       "/src/assets/autoboq.jpg"
