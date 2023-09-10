@@ -110,12 +110,12 @@ function ThreeScene() {
     // const gridHelper = new THREE.GridHelper(100, 1000);
     // gridHelper.rotation.x = -0.5 * Math.PI;
     // scene.add(gridHelper);
-    const create_object = (polylineShape,color) => {
+    const create_object = (polylineShape, color) => {
       const depth = 4;
-      const extrusionMaterial = new THREE.MeshStandardMaterial({
+      const extrusionMaterial = new THREE.MeshBasicMaterial({
         color: new THREE.Color(color),
       }); // Red color material
-      console.log(color)
+      console.log(color);
 
       const extrudeSettings = {
         depth: depth,
@@ -130,6 +130,12 @@ function ThreeScene() {
 
       object.position.set(0, 0, 0);
       scene.add(object);
+      const edges = new THREE.EdgesGeometry(geometry);
+      const line = new THREE.LineSegments(
+        edges,
+        new THREE.LineBasicMaterial({ color: 0xffffff })
+      );
+      scene.add(line);
     };
 
     Papa.parse("/src/assets/cubes.csv", {
@@ -145,7 +151,7 @@ function ThreeScene() {
           let polylineShape = new THREE.Shape();
           results.data.forEach((row) => {
             if (Polyline_ID !== row.Polyline_ID && Polyline_ID) {
-              create_object(polylineShape,Polyline_Color);
+              create_object(polylineShape, Polyline_Color);
               polylineShape = new THREE.Shape();
             }
 
@@ -154,7 +160,7 @@ function ThreeScene() {
               const firstZ = parseFloat(row.Y);
               polylineShape.moveTo(firstX, firstZ);
               Polyline_ID = row.Polyline_ID;
-              Polyline_Color = row.Color
+              Polyline_Color = row.Color;
             } else {
               const x = parseFloat(row.X);
               const z = parseFloat(row.Y);
