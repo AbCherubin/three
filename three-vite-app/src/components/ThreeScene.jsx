@@ -110,11 +110,12 @@ function ThreeScene() {
     // const gridHelper = new THREE.GridHelper(100, 1000);
     // gridHelper.rotation.x = -0.5 * Math.PI;
     // scene.add(gridHelper);
-    const create_object = (polylineShape) => {
-      const depth = 0.4;
+    const create_object = (polylineShape,color) => {
+      const depth = 4;
       const extrusionMaterial = new THREE.MeshStandardMaterial({
-        color: 0xff0000,
+        color: new THREE.Color(color),
       }); // Red color material
+      console.log(color)
 
       const extrudeSettings = {
         depth: depth,
@@ -139,11 +140,12 @@ function ThreeScene() {
         if (results.data && results.data.length > 0) {
           // Parse the first data point
           let Polyline_ID = null;
+          let Polyline_Color = null;
           // Move to the starting point
           let polylineShape = new THREE.Shape();
           results.data.forEach((row) => {
             if (Polyline_ID !== row.Polyline_ID && Polyline_ID) {
-              create_object(polylineShape);
+              create_object(polylineShape,Polyline_Color);
               polylineShape = new THREE.Shape();
             }
 
@@ -152,6 +154,7 @@ function ThreeScene() {
               const firstZ = parseFloat(row.Y);
               polylineShape.moveTo(firstX, firstZ);
               Polyline_ID = row.Polyline_ID;
+              Polyline_Color = row.Color
             } else {
               const x = parseFloat(row.X);
               const z = parseFloat(row.Y);
