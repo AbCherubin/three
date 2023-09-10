@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState} from "react";
+import { useRef, useEffect } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import Papa from "papaparse";
@@ -6,7 +6,6 @@ import { colors } from "../assets/colors.js";
 
 function ThreeScene() {
   const sceneRef = useRef(null);
-  const [totalArea, setTotalArea] = useState(0); // State to store the total area
 
   useEffect(() => {
     let scene, camera, renderer;
@@ -97,8 +96,6 @@ function ThreeScene() {
       .then((data) => {
         const parsedData = Papa.parse(data, { header: true }).data;
 
-        let totalArea = 0; // Initialize the total area
-        
         parsedData.forEach((row) => {
           const polylineID = row["Polyline ID"];
           const layer = row.Layer;
@@ -159,13 +156,7 @@ function ThreeScene() {
             uniqueLayers.add(row.Layer);
 
           }
-          // Calculate the area and add it to the total area
-          let pathLength = path.getLength(); // Assuming you have a function to calculate the path length
-          let area = pathLength * beam_height; // Calculate the area
-          totalArea += area; // Add to the total area
         });
-
-        setTotalArea(totalArea); // Update the total area state
       });
 
     // Animation loop
@@ -191,12 +182,7 @@ function ThreeScene() {
     };
   }, []);
 
-  return (
-    <div>
-      <div ref={sceneRef} id="three-scene"></div>
-      <div>Total Area: {totalArea.toFixed(2)}</div> {/* Display the total area */}
-    </div>
-  );
+  return <div ref={sceneRef} id="three-scene"></div>;
 }
 
 export default ThreeScene;
