@@ -81,7 +81,7 @@ function Map_BKK() {
   // Display parsed KML data on a plane
   function displayKMLData(data) {
     // Create a plane geometry
-    const geometry = new THREE.PlaneGeometry(100, 100, 32, 32);
+    const geometry = new THREE.PlaneGeometry(1000, 1000, 32, 32);
     const material = new THREE.MeshBasicMaterial({
       color: 0xffff00,
       side: THREE.DoubleSide,
@@ -93,17 +93,51 @@ function Map_BKK() {
     plane.rotation.x = -Math.PI / 2;
     plane.position.set(0, 0, 0);
     // Create a line mesh using the converted KML data
+    let count = 0;
     data.forEach((vertices) => {
-      const lineGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
-      lineGeometry.translate(-EPSG3857_offsetX, -EPSG3857_offsetY, 0);
-      lineGeometry.rotateX(-Math.PI / 2);
-      lineGeometry.rotateY(EPSG3857_RotationY);
+      //if (count > 1) return;
+      const polylineShape = new THREE.Shape(); // Create a single shape for the entire polyline
 
-      const line = new THREE.Line(
-        lineGeometry,
-        new THREE.LineBasicMaterial({ color: 0xff0000 })
+      // Parse the first data point
+      const firstRow = vertices[0];
+      const firstX = parseFloat(firstRow.x) - EPSG3857_offsetX;
+      const firstZ = parseFloat(firstRow.y) - EPSG3857_offsetY; // Use 'z' for the Y coordinate
+
+      // Move to the starting point
+      polylineShape.moveTo(firstX, firstZ);
+
+      vertices.forEach((row) => {
+        // Parse X and Y coordinates from CSV
+        const x = parseFloat(row.x) - EPSG3857_offsetX;
+        const z = parseFloat(row.y) - EPSG3857_offsetY; // Use 'z' for the Y coordinate
+
+        // Add points to the polyline shape
+        polylineShape.lineTo(x, z);
+      });
+      const extrudeSettings = {
+        depth: count * 2, // Extrusion depth based on your yOffset
+        bevelEnabled: false,
+      };
+      const geometry = new THREE.ExtrudeGeometry(
+        polylineShape,
+        extrudeSettings
       );
-      sceneRef.current.add(line);
+
+      geometry.rotateX(-0.5 * Math.PI);
+      geometry.rotateY(EPSG3857_RotationY);
+      const extrusionMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        transparent: true, // Make the material transparent
+        opacity: 0.3,
+      });
+      // Create a mesh with the red material
+      const object = new THREE.Mesh(geometry, extrusionMaterial);
+
+      // Position the object at (0, 0, 0) or adjust as needed
+
+      object.position.set(0, 0, 0);
+      sceneRef.current.add(object);
+      count++;
     });
   }
 
