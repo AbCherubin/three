@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState} from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import Papa from "papaparse";
@@ -6,6 +6,7 @@ import { colors } from "../assets/colors.js";
 
 function ThreeScene() {
   const sceneRef = useRef(null);
+  const [totalArea, setTotalArea] = useState(0); // State to store the total area
 
   useEffect(() => {
     let scene, camera, renderer;
@@ -29,52 +30,23 @@ function ThreeScene() {
     //renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
     // Append renderer's canvas only once on mount
     if (sceneRef.current) {
       sceneRef.current.appendChild(renderer.domElement);
     }
 
     // lights
-    // probe
-
-    // const ambient = new THREE.HemisphereLight(0xffffff, 0xbfd4d2, 3);
-    // scene.add(ambient);
-
-    // const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
-    // directionalLight.position.set(1, 4, 3).multiplyScalar(3);
-    // directionalLight.castShadow = true;
-    // directionalLight.shadow.mapSize.width = 2048;
-    // directionalLight.shadow.mapSize.height = 2048;
-    // directionalLight.shadow.camera.top = 10;
-    // directionalLight.shadow.camera.bottom = -10;
-    // directionalLight.shadow.camera.left = -10;
-    // directionalLight.shadow.camera.right = 10;
-    // scene.add(directionalLight);
-
-    scene.add(new THREE.HemisphereLight(0x8d7c7c, 0x494966, 3));
-
-    addShadowedLight(1, 20, 1, 0xffffff, 3.5);
-    addShadowedLight(0.5, 20, -1, 0xffd500, 3);
-    function addShadowedLight(x, y, z, color, intensity) {
-      const directionalLight = new THREE.DirectionalLight(color, intensity);
-      directionalLight.position.set(x, y, z);
-      scene.add(directionalLight);
-
-      directionalLight.castShadow = true;
-
-      const d = 30;
-      directionalLight.shadow.camera.left = -d;
-      directionalLight.shadow.camera.right = d;
-      directionalLight.shadow.camera.top = d;
-      directionalLight.shadow.camera.bottom = -d;
-
-      directionalLight.shadow.camera.near = 1;
-      directionalLight.shadow.camera.far = 40;
-
-      directionalLight.shadow.bias = -0.002;
-    }
+    const ambient = new THREE.HemisphereLight(0xffffff, 0xbfd4d2, 3);
+    scene.add(ambient);
+    // Create a directional light
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    directionalLight.position.set(1, 4, 3).multiplyScalar(3);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.setScalar(2048);
+    directionalLight.shadow.bias = -1e-4;
+    directionalLight.shadow.normalBias = 1e-4;
+    scene.add(directionalLight);
 
     // Create OrbitControls
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -90,22 +62,20 @@ function ThreeScene() {
     // Create plane
     const planeGeometry = new THREE.PlaneGeometry(1974 / 34.3, 1372 / 34.3);
     const texture = new THREE.TextureLoader().load("/src/assets/plan.png");
-    const planeMaterial = new THREE.MeshPhongMaterial({
+    const planeMaterial = new THREE.MeshBasicMaterial({
       map: texture,
       side: THREE.DoubleSide,
-      color: 0xcbcbcb,
-      specular: 0x474747,
+      transparent: true, // Enable transparency
+      opacity: 0.9,
+      color: new THREE.Color(0xf0f0f0),
     });
 
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
 
     plane.position.x = 2.4;
-    plane.position.z = -0.7;
-    plane.position.y = 0;
+    plane.position.z = -0.8;
     plane.rotation.x = -0.5 * Math.PI;
-    plane.receiveShadow = true;
     scene.add(plane);
-    // Ground
 
     // Create gridHelper
     // const gridHelper = new THREE.GridHelper(100, 1000);
@@ -127,6 +97,8 @@ function ThreeScene() {
       .then((data) => {
         const parsedData = Papa.parse(data, { header: true }).data;
 
+        let totalArea = 0; // Initialize the total area
+        
         parsedData.forEach((row) => {
           const polylineID = row["Polyline ID"];
           const layer = row.Layer;
@@ -176,47 +148,30 @@ function ThreeScene() {
             // Create a material for the extrusion
             let material = new THREE.MeshStandardMaterial({
               color: new THREE.Color(layerColors[layer]),
-              flatShading: true,
             });
 
             let extrusion = new THREE.Mesh(geometry, material);
             extrusion.rotation.x = -0.5 * Math.PI;
-            extrusion.castShadow = true;
-            extrusion.receiveShadow = true;
             scene.add(extrusion);
 
             // Store the layer information in userData
             extrusion.userData.layer = row.Layer;
             uniqueLayers.add(row.Layer);
+
           }
+          // Calculate the area and add it to the total area
+          let pathLength = path.getLength(); // Assuming you have a function to calculate the path length
+          let area = pathLength * beam_height; // Calculate the area
+          totalArea += area; // Add to the total area
         });
+
+        setTotalArea(totalArea); // Update the total area state
       });
-    const texture_logo = new THREE.TextureLoader().load(
-      "/src/assets/autoboq.jpg"
-    );
-    texture_logo.colorSpace = THREE.SRGBColorSpace;
-    const cubeGeometry = new THREE.BoxGeometry(4, 4, 4);
-    const cubeMaterial = new THREE.MeshPhongMaterial({
-      map: texture_logo,
-      roughness: 0.5, // Adjust the roughness to control the surface roughness
-      metalness: 0.5, // Adjust the metalness to control how metallic the surface looks
-    });
-    const cube_logo = new THREE.Mesh(cubeGeometry, cubeMaterial);
-    cube_logo.castShadow = true;
-    cube_logo.receiveShadow = true;
 
-    // Load the texture
-
-    const animateCube = () => {
-      cube_logo.rotation.y += 0.005; // Rotate the cube around the x-axis
-      cube_logo.rotation.z += 0.005; // Rotate the cube around the y-axis
-    };
-    cube_logo.position.set(23, 3, -12);
-    scene.add(cube_logo);
     // Animation loop
     const animate = () => {
       requestAnimationFrame(animate);
-      animateCube();
+
       controls.update();
       renderer.render(scene, camera);
     };
@@ -236,7 +191,12 @@ function ThreeScene() {
     };
   }, []);
 
-  return <div ref={sceneRef} id="three-scene"></div>;
+  return (
+    <div>
+      <div ref={sceneRef} id="three-scene"></div>
+      <div>Total Area: {totalArea.toFixed(2)}</div> {/* Display the total area */}
+    </div>
+  );
 }
 
 export default ThreeScene;
