@@ -21,8 +21,8 @@ def extract_lwpolyline_properties(dxf_file):
                 if entity.dxf.layer.startswith('-'):
                     data.append({
                         'Layer': entity.dxf.layer,
-                        'Polyline ID': entity.dxf.handle,
-                        'Point Index': index,
+                        'Polyline_ID': entity.dxf.handle,
+                        'Point_Index': index,
                         'X': point[0],
                         'Y': point[1],
                     })
@@ -32,8 +32,8 @@ def extract_lwpolyline_properties(dxf_file):
                 first_point = points[0]
                 data.append({
                     'Layer': entity.dxf.layer,
-                    'Polyline ID': entity.dxf.handle,
-                    'Point Index': len(points),  # Index for the extra point
+                    'Polyline_ID': entity.dxf.handle,
+                    'Point_Index': len(points),  # Index for the extra point
                     'X': first_point[0],
                     'Y': first_point[1],
                 })
@@ -44,15 +44,15 @@ def extract_lwpolyline_properties(dxf_file):
             if entity.dxf.layer.startswith('-'):
                 data.append({
                     'Layer': entity.dxf.layer,
-                    'Polyline ID': entity.dxf.handle,
-                    'Point Index': 0,  # Start point
+                    'Polyline_ID': entity.dxf.handle,
+                    'Point_Index': 0,  # Start point
                     'X': start_point[0],
                     'Y': start_point[1],
                 })
                 data.append({
                     'Layer': entity.dxf.layer,
-                    'Polyline ID': entity.dxf.handle,
-                    'Point Index': 1,  # End point
+                    'Polyline_ID': entity.dxf.handle,
+                    'Point_Index': 1,  # End point
                     'X': end_point[0],
                     'Y': end_point[1],
                 })
