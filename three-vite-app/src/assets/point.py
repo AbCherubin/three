@@ -6,8 +6,8 @@ from tkinter.filedialog import askopenfilename
 # Define a color map for AutoCAD color indices to RGB values
 color_map = {
     0: (0, 0, 0),
-    1: (255, 0, 63), #edited
-    2: (255, 191, 0), #edited
+    1: (187, 132, 124), #edited
+    2: (243, 178, 53), #edited
     3: (0, 255, 0),
     4: (0, 255, 255),
     5: (0, 0, 255),

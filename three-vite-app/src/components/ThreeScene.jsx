@@ -89,10 +89,9 @@ function ThreeScene() {
     // Create plane
     const planeGeometry = new THREE.PlaneGeometry(1974 / 34.3, 1372 / 34.3);
     const texture = new THREE.TextureLoader().load("/src/assets/plan.png");
-    const planeMaterial = new THREE.MeshPhongMaterial({
+    const planeMaterial = new THREE.MeshBasicMaterial({
       map: texture,
       side: THREE.DoubleSide,
-      color: 0xcbcbcb,
       specular: 0x474747,
     });
 
@@ -102,7 +101,7 @@ function ThreeScene() {
     plane.position.z = -0.7;
     plane.position.y = 0;
     plane.rotation.x = -0.5 * Math.PI;
-    plane.receiveShadow = true;
+    plane.receiveShadow = false;
     scene.add(plane);
     // Ground
 
@@ -150,22 +149,38 @@ function ThreeScene() {
           // Move to the starting point
           let polylineShape = new THREE.Shape();
           results.data.forEach((row) => {
-            if (Polyline_ID !== row.Polyline_ID && Polyline_ID) {
-              create_object(polylineShape, Polyline_Color);
-              polylineShape = new THREE.Shape();
-            }
+            let beam_height = 4;
+            let beam_width = 0.01;
 
-            if (row.Point_Index == 0) {
-              const firstX = parseFloat(row.X);
-              const firstZ = parseFloat(row.Y);
-              polylineShape.moveTo(firstX, firstZ);
-              Polyline_ID = row.Polyline_ID;
-              Polyline_Color = row.Color;
-            } else {
-              const x = parseFloat(row.X);
-              const z = parseFloat(row.Y);
-              polylineShape.lineTo(x, z);
-            }
+            // Create profile for extrusion
+            let shape = new THREE.Shape();
+            shape.moveTo(0, beam_width / 2);
+            shape.lineTo(beam_height, beam_width / 2);
+            shape.lineTo(beam_height, -beam_width / 2);
+            shape.lineTo(0, -beam_width / 2);
+            shape.lineTo(0, beam_width / 2);
+
+            // Create a path for extrusion
+            let path = new THREE.LineCurve3(
+              new THREE.Vector3(startPoint.x, startPoint.y, beam_height),
+              new THREE.Vector3(endPoint.x, endPoint.y, beam_height)
+            );
+            // if (Polyline_ID !== row.Polyline_ID && Polyline_ID) {
+            //   create_object(polylineShape, Polyline_Color);
+            //   polylineShape = new THREE.Shape();
+            // }
+
+            // if (row.Point_Index == 0) {
+            //   const firstX = parseFloat(row.X);
+            //   const firstZ = parseFloat(row.Y);
+            //   polylineShape.moveTo(firstX, firstZ);
+            //   Polyline_ID = row.Polyline_ID;
+            //   Polyline_Color = row.Color;
+            // } else {
+            //   const x = parseFloat(row.X);
+            //   const z = parseFloat(row.Y);
+            //   polylineShape.lineTo(x, z);
+            // }
           });
         }
       },
