@@ -92,7 +92,6 @@ function ThreeScene() {
     const planeMaterial = new THREE.MeshBasicMaterial({
       map: texture,
       side: THREE.DoubleSide,
-      specular: 0x474747,
     });
 
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
@@ -109,12 +108,37 @@ function ThreeScene() {
     // const gridHelper = new THREE.GridHelper(100, 1000);
     // gridHelper.rotation.x = -0.5 * Math.PI;
     // scene.add(gridHelper);
+    const create_line_shape = (beam_height, beam_width, path, color) => {
+      let shape = new THREE.Shape();
+      shape.moveTo(0, beam_width / 2);
+      shape.lineTo(beam_height, beam_width / 2);
+      shape.lineTo(beam_height, -beam_width / 2);
+      shape.lineTo(0, -beam_width / 2);
+      shape.lineTo(0, beam_width / 2);
+
+      // Create an extrusion geometry
+      let extrudeSettings = {
+        steps: 100, // The higher the number here, the smoother your object will be
+        bevelEnabled: false,
+        extrudePath: path,
+      };
+      let geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      geometry.rotateX(-0.5 * Math.PI);
+      // Create a material for the extrusion
+      let material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(color),
+      });
+
+      let extrusion = new THREE.Mesh(geometry, material);
+
+      scene.add(extrusion);
+    };
+
     const create_object = (polylineShape, color) => {
       const depth = 4;
       const extrusionMaterial = new THREE.MeshBasicMaterial({
         color: new THREE.Color(color),
       }); // Red color material
-      console.log(color);
 
       const extrudeSettings = {
         depth: depth,
@@ -147,24 +171,36 @@ function ThreeScene() {
           let Polyline_ID = null;
           let Polyline_Color = null;
           // Move to the starting point
-          let polylineShape = new THREE.Shape();
-          results.data.forEach((row) => {
-            let beam_height = 4;
-            let beam_width = 0.01;
+          // Create profile for extrusion
+          let start_x = null;
+          let start_y = null;
+          let stop_x = null;
+          let stop_y = null;
 
-            // Create profile for extrusion
-            let shape = new THREE.Shape();
-            shape.moveTo(0, beam_width / 2);
-            shape.lineTo(beam_height, beam_width / 2);
-            shape.lineTo(beam_height, -beam_width / 2);
-            shape.lineTo(0, -beam_width / 2);
-            shape.lineTo(0, beam_width / 2);
+          let beam_height = 4;
+          let beam_width = 0.01;
+          results.data.forEach((row) => {
+            if (Polyline_ID !== row.Polyline_ID && Polyline_ID) {
+              let path = new THREE.LineCurve3(
+                new THREE.Vector3(start_x, start_y, beam_height),
+                new THREE.Vector3(stop_x, stop_y, beam_height)
+              );
+              create_line_shape(beam_height, beam_width, path, Polyline_Color);
+            }
+
+            if (row.Point_Index == 0) {
+              start_x = parseFloat(row.X);
+              start_y = parseFloat(row.Y);
+
+              Polyline_ID = row.Polyline_ID;
+              Polyline_Color = row.Color;
+            } else {
+              stop_x = parseFloat(row.X);
+              stop_y = parseFloat(row.Y);
+            }
 
             // Create a path for extrusion
-            let path = new THREE.LineCurve3(
-              new THREE.Vector3(startPoint.x, startPoint.y, beam_height),
-              new THREE.Vector3(endPoint.x, endPoint.y, beam_height)
-            );
+
             // if (Polyline_ID !== row.Polyline_ID && Polyline_ID) {
             //   create_object(polylineShape, Polyline_Color);
             //   polylineShape = new THREE.Shape();
