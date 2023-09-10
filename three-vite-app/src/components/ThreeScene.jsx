@@ -141,20 +141,24 @@ function ThreeScene() {
               extrudePath: path,
             };
             let geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-
+            geometry.rotateX(-0.5 * Math.PI);
             // Create a material for the extrusion
             let material = new THREE.MeshStandardMaterial({
               color: new THREE.Color(layerColors[layer]),
             });
 
             let extrusion = new THREE.Mesh(geometry, material);
-            extrusion.rotation.x = -0.5 * Math.PI;
-            scene.add(extrusion);
 
+            scene.add(extrusion);
+            const edges = new THREE.EdgesGeometry(geometry);
+            const line = new THREE.LineSegments(
+              edges,
+              new THREE.LineBasicMaterial({ color: 0xffffff })
+            );
+            scene.add(line);
             // Store the layer information in userData
             extrusion.userData.layer = row.Layer;
             uniqueLayers.add(row.Layer);
-
           }
         });
       });
