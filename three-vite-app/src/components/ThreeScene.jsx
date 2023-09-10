@@ -110,6 +110,26 @@ function ThreeScene() {
     // const gridHelper = new THREE.GridHelper(100, 1000);
     // gridHelper.rotation.x = -0.5 * Math.PI;
     // scene.add(gridHelper);
+    const create_object = (polylineShape) => {
+      const depth = 0.4;
+      const extrusionMaterial = new THREE.MeshStandardMaterial({
+        color: 0xff0000,
+      }); // Red color material
+
+      const extrudeSettings = {
+        depth: depth,
+        bevelEnabled: false,
+      };
+      const geometry = new THREE.ExtrudeGeometry(
+        polylineShape,
+        extrudeSettings
+      );
+      geometry.rotateX(-0.5 * Math.PI);
+      const object = new THREE.Mesh(geometry, extrusionMaterial);
+
+      object.position.set(0, 0, 0);
+      scene.add(object);
+    };
 
     Papa.parse("/src/assets/cubes.csv", {
       download: true,
@@ -117,47 +137,27 @@ function ThreeScene() {
       dynamicTyping: true,
       complete: function (results) {
         if (results.data && results.data.length > 0) {
-          const extrusionMaterial = new THREE.MeshStandardMaterial({
-            color: 0xff0000,
-          }); // Red color material
-          const depth = 0.4; // Adjust this value based on your data
-
-          const polylineShape = new THREE.Shape(); // Create a single shape for the entire polyline
           // Parse the first data point
-          const firstRow = results.data[0];
-          const firstX = parseFloat(firstRow.X);
-          const firstZ = parseFloat(firstRow.Y); // Use 'z' for the Y coordinate
-
+          let Polyline_ID = null;
           // Move to the starting point
-          polylineShape.moveTo(firstX, firstZ);
+          let polylineShape = new THREE.Shape();
           results.data.forEach((row) => {
-            // Parse X and Y coordinates from CSV
-            const x = parseFloat(row.X);
-            const z = parseFloat(row.Y); // Use 'z' for the Y coordinate
+            if (Polyline_ID !== row.Polyline_ID && Polyline_ID) {
+              create_object(polylineShape);
+              polylineShape = new THREE.Shape();
+            }
 
-            // Add points to the polyline shape
-            polylineShape.lineTo(x, z);
+            if (row.Point_Index == 0) {
+              const firstX = parseFloat(row.X);
+              const firstZ = parseFloat(row.Y);
+              polylineShape.moveTo(firstX, firstZ);
+              Polyline_ID = row.Polyline_ID;
+            } else {
+              const x = parseFloat(row.X);
+              const z = parseFloat(row.Y);
+              polylineShape.lineTo(x, z);
+            }
           });
-
-          // Extrude the entire polyline shape along the Y-axis to create a 3D object
-          const extrudeSettings = {
-            depth: depth, // Extrusion depth based on your yOffset
-            bevelEnabled: false,
-          };
-          const geometry = new THREE.ExtrudeGeometry(
-            polylineShape,
-            extrudeSettings
-          );
-
-          // Create a mesh with the red material
-          const object = new THREE.Mesh(geometry, extrusionMaterial);
-
-          // Position the object at (0, 0, 0) or adjust as needed
-          object.position.set(0, 0, -depth / 2);
-          //  object.rotation.x = -0.5 * Math.PI;
-
-          // Add the object to the scene
-          scene.add(object);
         }
       },
     });
@@ -169,8 +169,6 @@ function ThreeScene() {
     const cubeGeometry = new THREE.BoxGeometry(4, 4, 4);
     const cubeMaterial = new THREE.MeshPhongMaterial({
       map: texture_logo,
-      roughness: 0.5, // Adjust the roughness to control the surface roughness
-      metalness: 0.5, // Adjust the metalness to control how metallic the surface looks
     });
     const cube_logo = new THREE.Mesh(cubeGeometry, cubeMaterial);
     cube_logo.castShadow = true;
