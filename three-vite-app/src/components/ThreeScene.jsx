@@ -89,9 +89,11 @@ function ThreeScene() {
     // Create plane
     const planeGeometry = new THREE.PlaneGeometry(2202 / 52.1, 1560 / 52.1);
     const texture = new THREE.TextureLoader().load("/src/assets/plan.png");
-    const planeMaterial = new THREE.MeshPhongMaterial({
+    const planeMaterial = new THREE.MeshBasicMaterial({
       map: texture,
       side: THREE.DoubleSide,
+      transparent: true, // Enable transparency
+      opacity: 0.9,
     });
 
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
