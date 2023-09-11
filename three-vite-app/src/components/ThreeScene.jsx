@@ -87,13 +87,11 @@ function ThreeScene() {
     controls.update();
 
     // Create plane
-    const planeGeometry = new THREE.PlaneGeometry(1974 / 34.3, 1372 / 34.3);
+    const planeGeometry = new THREE.PlaneGeometry(2202 / 52.1, 1560 / 52.1);
     const texture = new THREE.TextureLoader().load("/src/assets/plan.png");
     const planeMaterial = new THREE.MeshPhongMaterial({
       map: texture,
       side: THREE.DoubleSide,
-      color: 0xcbcbcb,
-      specular: 0x474747,
     });
 
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
@@ -110,8 +108,12 @@ function ThreeScene() {
     // const gridHelper = new THREE.GridHelper(100, 1000);
     // gridHelper.rotation.x = -0.5 * Math.PI;
     // scene.add(gridHelper);
+    const startPoints = {};
+    const xOffset = -5.25; // Add your X offset here 
+    const yOffset = 1.9; // Add your Y offset here
+
     const create_object = (polylineShape, color) => {
-      const depth = 4;
+      const depth = 0.6;
       const extrusionMaterial = new THREE.MeshBasicMaterial({
         color: new THREE.Color(color),
       }); // Red color material
@@ -156,14 +158,14 @@ function ThreeScene() {
             }
 
             if (row.Point_Index == 0) {
-              const firstX = parseFloat(row.X);
-              const firstZ = parseFloat(row.Y);
+              const firstX = parseFloat(row.X+xOffset);
+              const firstZ = parseFloat(row.Y+yOffset);
               polylineShape.moveTo(firstX, firstZ);
               Polyline_ID = row.Polyline_ID;
               Polyline_Color = row.Color;
             } else {
-              const x = parseFloat(row.X);
-              const z = parseFloat(row.Y);
+              const x = parseFloat(row.X+xOffset);
+              const z = parseFloat(row.Y+yOffset);
               polylineShape.lineTo(x, z);
             }
           });
