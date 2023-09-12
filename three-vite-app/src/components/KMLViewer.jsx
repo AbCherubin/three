@@ -1,16 +1,8 @@
-import React, { useEffect, useRef } from "react";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { useEffect } from "react";
 import * as THREE from "three";
 import proj4 from "proj4";
 
 function KMLViewer() {
-  const sceneRef = useRef(null);
-  const cameraRef = useRef(null);
-  const rendererRef = useRef(null);
-  const EPSG3857_offsetX = 11214913.406111;
-  const EPSG3857_offsetY = 1537202.143335;
-  const EPSG3857_RotationY = 1.82145115;
-  // Define the projection strings for EPSG:4326 (WGS 84) and EPSG:3857 (Web Mercator)
   proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs");
   proj4.defs(
     "EPSG:3857",
@@ -18,62 +10,9 @@ function KMLViewer() {
   );
 
   useEffect(() => {
-    // Your Three.js scene, camera, and renderer setup here
-    const scene = new THREE.Scene();
-    sceneRef.current = scene;
-
-    const camera = new THREE.PerspectiveCamera(
-      45,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      10000
-    );
-    cameraRef.current = camera;
-
-    const renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    rendererRef.current = renderer;
-    document.body.appendChild(renderer.domElement);
-
-    // Set the camera position
-    camera.position.set(0, 4000, 0);
-
-    // Create OrbitControls
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 0, 0);
-    controls.update();
-    controls.enablePan = true;
-    controls.enableDamping = true;
-    controls.minDistance = 5;
-    controls.maxDistance = 4000;
-    controls.enableRotate = true;
-    // Fetch and parse the KML data when the component mounts
     fetchAndParseKML();
 
-    // Animation loop
-    const animate = () => {
-      requestAnimationFrame(animate);
-
-      // Add any animation or camera control logic here if needed
-
-      renderer.render(scene, camera);
-    };
-
-    animate();
-
-    window.onresize = function () {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    };
-    // Clean up Three.js resources when the component unmounts
-    return () => {
-      const domElement = rendererRef.current.domElement;
-      scene.remove(...scene.children);
-      camera.clear();
-      domElement.parentNode.removeChild(domElement);
-    };
+    return () => {};
   }, []);
 
   // Function to fetch and parse the KML data
@@ -93,70 +32,100 @@ function KMLViewer() {
 
   // Modify the KML parsing function to extract coordinates
   function parseKML(kml) {
-    const coordinates = [];
+    const features = [];
 
-    // Use a KML parsing library or custom code to extract coordinates from KML
-    // Example: Use regex to extract coordinates from KML
-    const coordinateRegex = /<coordinates>(.*?)<\/coordinates>/g;
+    // Use a KML parsing library or custom code to extract features from KML
+    // Example: Use regex to extract Placemark elements from KML
+    const placemarkRegex = /<Placemark>(.*?)<\/Placemark>/gs;
     let match;
 
-    while ((match = coordinateRegex.exec(kml)) !== null) {
-      const coordinatesText = match[1];
-      const coordinatesArray = coordinatesText.split(" ").map((coordStr) => {
-        const [lon, lat, alt] = coordStr.split(",").map(parseFloat);
-        return { x: lon, y: lat, z: alt };
-      });
+    while ((match = placemarkRegex.exec(kml)) !== null) {
+      const placemark = match[1];
+      const coordinatesMatch = /<coordinates>(.*?)<\/coordinates>/s.exec(
+        placemark
+      );
 
-      coordinates.push(coordinatesArray);
+      if (coordinatesMatch) {
+        const coordinatesText = coordinatesMatch[1];
+        const coordinatesArray = coordinatesText.split(" ").map((coordStr) => {
+          const [lon, lat, alt] = coordStr.split(",").map(parseFloat);
+          return { x: lon, y: lat, z: alt };
+        });
+
+        // Extract color and Layer_overlay
+        const colorMatch = /<SimpleData name="color">(.*?)<\/SimpleData>/s.exec(
+          placemark
+        );
+        const layerOverlayMatch =
+          /<SimpleData name="Layer_overlay">(.*?)<\/SimpleData>/s.exec(
+            placemark
+          );
+
+        const fidMatch = /<SimpleData name="fid">(.*?)<\/SimpleData>/s.exec(
+          placemark
+        );
+        const fid = fidMatch[1];
+        const layerMatch = /<SimpleData name="layer">(.*?)<\/SimpleData>/s.exec(
+          placemark
+        );
+        const layer = layerMatch[1];
+
+        const layerOverlay = layerOverlayMatch
+          ? parseInt(layerOverlayMatch[1])
+          : 8; // Default is 0
+
+        let color = "#FF0000FF"; // Default color is red (fully opaque)
+
+        if (colorMatch) {
+          const colorValue = colorMatch[1]; // Extracted color value
+          const colorComponents = colorValue.split(",");
+
+          if (colorComponents.length === 4) {
+            // Remove the alpha component
+            colorComponents.pop();
+          }
+
+          const [r, g, b] = colorComponents.map(Number); // Convert to individual components
+          color = `#${r.toString(16).padStart(2, "0")}${g
+            .toString(16)
+            .padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+        }
+
+        // Store the extracted data
+        features.push({
+          coordinates: coordinatesArray,
+          color: color,
+          layerOverlay: layerOverlay,
+          fid: fid,
+          layer: layer,
+        });
+      }
     }
 
-    return coordinates;
+    return features;
   }
 
   // Convert coordinates to EPSG:3857
   function convertCoordinatesTo3857(data) {
-    return data.map((vertices) => {
-      const convertedVertices = vertices.map((vertex) => {
+    return data.map((feature) => {
+      const convertedVertices = feature.coordinates.map((vertex) => {
         // Convert each vertex from EPSG:4326 to EPSG:3857
         const [x, y] = proj4("EPSG:4326", "EPSG:3857", [vertex.x, vertex.y]);
         return new THREE.Vector3(x, y, vertex.z || 0);
       });
 
-      return convertedVertices;
+      return {
+        ...feature, // Keep the other properties (color, layerOverlay, etc.)
+        coordinates: convertedVertices, // Replace coordinates with the converted ones
+      };
     });
   }
 
-  // Display parsed KML data on a plane
   function displayKMLData(data) {
-    // Create a plane geometry
-    const geometry = new THREE.PlaneGeometry(100, 100, 32, 32);
-    const material = new THREE.MeshBasicMaterial({
-      color: 0xffff00,
-      side: THREE.DoubleSide,
-    });
-    const plane = new THREE.Mesh(geometry, material);
-    sceneRef.current.add(plane);
-
-    // Position the plane as needed
-    plane.rotation.x = -Math.PI / 2;
-    plane.position.set(0, 0, 0);
-    // Create a line mesh using the converted KML data
     console.log(data);
-    data.forEach((vertices) => {
-      const lineGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
-      lineGeometry.translate(-EPSG3857_offsetX, -EPSG3857_offsetY, 0);
-      lineGeometry.rotateX(-Math.PI / 2);
-      lineGeometry.rotateY(EPSG3857_RotationY);
-
-      const line = new THREE.Line(
-        lineGeometry,
-        new THREE.LineBasicMaterial({ color: 0xff0000 })
-      );
-      sceneRef.current.add(line);
-    });
   }
 
-  return null; // No need to render anything, as Three.js handles rendering
+  return null;
 }
 
 export default KMLViewer;

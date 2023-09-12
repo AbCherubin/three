@@ -3,6 +3,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import * as THREE from "three";
 import proj4 from "proj4";
 import { bkk_map } from "../assets/bkk_map_array.js";
+
 function Map_BKK() {
   const sceneRef = useRef(null);
   const cameraRef = useRef(null);
@@ -18,7 +19,6 @@ function Map_BKK() {
   );
 
   useEffect(() => {
-    // Your Three.js scene, camera, and renderer setup here
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
@@ -31,6 +31,7 @@ function Map_BKK() {
     cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer();
+    renderer.antialias = true;
     renderer.setSize(window.innerWidth, window.innerHeight);
     rendererRef.current = renderer;
     document.body.appendChild(renderer.domElement);
@@ -41,23 +42,28 @@ function Map_BKK() {
     // Create OrbitControls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0, 0, 0);
-    controls.update();
+    //controls.update();
     controls.enablePan = true;
     controls.enableDamping = true;
     controls.minDistance = 5;
-    controls.maxDistance = 4000;
+    controls.maxDistance = 7000;
     controls.enableRotate = true;
-
     controls.maxPolarAngle = Math.PI / 2;
+
+    // lights
+    const ambient = new THREE.HemisphereLight(0xffffff, 0xbfd4d2, 3);
+    sceneRef.current.add(ambient);
+    // Create a directional light
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
+    directionalLight.position.set(1, 7000, 3).multiplyScalar(3);
+    sceneRef.current.add(directionalLight);
     // Fetch and parse the KML data when the component mounts
     displayKMLData(bkk_map);
 
     // Animation loop
     const animate = () => {
       requestAnimationFrame(animate);
-
-      // Add any animation or camera control logic here if needed
-
+      controls.update();
       renderer.render(scene, camera);
     };
 
@@ -87,61 +93,89 @@ function Map_BKK() {
       side: THREE.DoubleSide,
     });
     const plane = new THREE.Mesh(geometry, material);
-    sceneRef.current.add(plane);
-
-    // Position the plane as needed
     plane.rotation.x = -Math.PI / 2;
     plane.position.set(0, 0, 0);
-    // Create a line mesh using the converted KML data
+    // sceneRef.current.add(plane);
+
+    // Create a InstancedMesh
+
     let count = 0;
     data.forEach((vertices) => {
-      //if (count > 1) return;
-      const polylineShape = new THREE.Shape(); // Create a single shape for the entire polyline
+      if (
+        vertices.fid !== "375" &&
+        vertices.fid !== "1" &&
+        vertices.fid !== "374"
+      ) {
+        const polylineShape = new THREE.Shape(); // Create a single shape for the entire polyline
+        // Parse the first data point
+        const firstRow = vertices.coordinates[0];
+        const firstX = parseFloat(firstRow.x) - EPSG3857_offsetX;
+        const firstZ = parseFloat(firstRow.y) - EPSG3857_offsetY; // Use 'z' for the Y coordinate
 
-      // Parse the first data point
-      const firstRow = vertices[0];
-      const firstX = parseFloat(firstRow.x) - EPSG3857_offsetX;
-      const firstZ = parseFloat(firstRow.y) - EPSG3857_offsetY; // Use 'z' for the Y coordinate
+        // Move to the starting point
+        polylineShape.moveTo(firstX, firstZ);
 
-      // Move to the starting point
-      polylineShape.moveTo(firstX, firstZ);
+        vertices.coordinates.slice(1).forEach((row) => {
+          // Parse X and Y coordinates from CSV
+          const x = parseFloat(row.x) - EPSG3857_offsetX;
+          const z = parseFloat(row.y) - EPSG3857_offsetY; // Use 'z' for the Y coordinate
 
-      vertices.forEach((row) => {
-        // Parse X and Y coordinates from CSV
-        const x = parseFloat(row.x) - EPSG3857_offsetX;
-        const z = parseFloat(row.y) - EPSG3857_offsetY; // Use 'z' for the Y coordinate
+          // Add points to the polyline shape
+          polylineShape.lineTo(x, z);
+        });
+        let depth;
 
-        // Add points to the polyline shape
-        polylineShape.lineTo(x, z);
-      });
-      const extrudeSettings = {
-        depth: count * 2, // Extrusion depth based on your yOffset
-        bevelEnabled: false,
-      };
-      const geometry = new THREE.ExtrudeGeometry(
-        polylineShape,
-        extrudeSettings
-      );
+        switch (vertices.layerOverlay) {
+          case 8:
+            depth = 0.2;
+            break;
+          case 9:
+            depth = 1;
+            break;
+          case 10:
+            depth = 10;
+            break;
+          case 11:
+            depth = 40;
+            break;
+          case 12:
+            depth = 45; // Set the depth for these values
+            break;
+          default:
+            depth = 0.2; // Default depth for other values
+            break;
+        }
+        const extrudeSettings = {
+          depth: depth, // Extrusion depth based on your yOffset
+          bevelEnabled: false,
+        };
+        const geometry = new THREE.ExtrudeGeometry(
+          polylineShape,
+          extrudeSettings
+        );
 
-      geometry.rotateX(-0.5 * Math.PI);
-      geometry.rotateY(EPSG3857_RotationY);
-      const extrusionMaterial = new THREE.MeshBasicMaterial({
-        color: 0xff0000,
-        transparent: true, // Make the material transparent
-        opacity: 0.3,
-      });
-      // Create a mesh with the red material
-      const object = new THREE.Mesh(geometry, extrusionMaterial);
+        geometry.rotateX(-0.5 * Math.PI);
+        geometry.rotateY(EPSG3857_RotationY);
+        const extrusionMaterial = new THREE.MeshBasicMaterial({
+          color: new THREE.Color(vertices.color),
+          transparent: false, // Make the material transparent
+          opacity: 0.8,
+        });
+        extrusionMaterial.polygonOffset = true;
+        extrusionMaterial.polygonOffsetFactor = -0.2;
+        // Create a mesh with the red material
+        const object = new THREE.Mesh(geometry, extrusionMaterial);
 
-      // Position the object at (0, 0, 0) or adjust as needed
+        // Position the object at (0, 0, 0) or adjust as needed
 
-      object.position.set(0, 0, 0);
-      sceneRef.current.add(object);
+        object.position.set(0, 0, 0);
+        sceneRef.current.add(object);
+      }
       count++;
     });
   }
 
-  return null; // No need to render anything, as Three.js handles rendering
+  return null;
 }
 
 export default Map_BKK;
