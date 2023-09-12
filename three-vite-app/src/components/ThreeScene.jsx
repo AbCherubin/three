@@ -28,29 +28,10 @@ function ThreeScene() {
     //renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    // Append renderer's canvas only once on mount
+
     if (sceneRef.current) {
       sceneRef.current.appendChild(renderer.domElement);
     }
-
-    // lights
-    // probe
-
-    // const ambient = new THREE.HemisphereLight(0xffffff, 0xbfd4d2, 3);
-    // scene.add(ambient);
-
-    // const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
-    // directionalLight.position.set(1, 4, 3).multiplyScalar(3);
-    // directionalLight.castShadow = true;
-    // directionalLight.shadow.mapSize.width = 2048;
-    // directionalLight.shadow.mapSize.height = 2048;
-    // directionalLight.shadow.camera.top = 10;
-    // directionalLight.shadow.camera.bottom = -10;
-    // directionalLight.shadow.camera.left = -10;
-    // directionalLight.shadow.camera.right = 10;
-    // scene.add(directionalLight);
 
     scene.add(new THREE.HemisphereLight(0x8d7c7c, 0x494966, 3));
 
@@ -102,64 +83,6 @@ function ThreeScene() {
     plane.rotation.x = -0.5 * Math.PI;
     plane.receiveShadow = false;
     scene.add(plane);
-    // Ground
-
-    // Create gridHelper
-    // const gridHelper = new THREE.GridHelper(100, 1000);
-    // gridHelper.rotation.x = -0.5 * Math.PI;
-    // scene.add(gridHelper);
-    const create_line_shape = (beam_height, beam_width, path, color) => {
-      let shape = new THREE.Shape();
-      shape.moveTo(0, beam_width / 2);
-      shape.lineTo(beam_height, beam_width / 2);
-      shape.lineTo(beam_height, -beam_width / 2);
-      shape.lineTo(0, -beam_width / 2);
-      shape.lineTo(0, beam_width / 2);
-
-      // Create an extrusion geometry
-      let extrudeSettings = {
-        steps: 100, // The higher the number here, the smoother your object will be
-        bevelEnabled: false,
-        extrudePath: path,
-      };
-      let geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-      geometry.rotateX(-0.5 * Math.PI);
-      // Create a material for the extrusion
-      let material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(color),
-      });
-
-      let extrusion = new THREE.Mesh(geometry, material);
-
-      scene.add(extrusion);
-    };
-
-    const create_object = (polylineShape, color) => {
-      const depth = 4;
-      const extrusionMaterial = new THREE.MeshBasicMaterial({
-        color: new THREE.Color(color),
-      }); // Red color material
-
-      const extrudeSettings = {
-        depth: depth,
-        bevelEnabled: false,
-      };
-      const geometry = new THREE.ExtrudeGeometry(
-        polylineShape,
-        extrudeSettings
-      );
-      geometry.rotateX(-0.5 * Math.PI);
-      const object = new THREE.Mesh(geometry, extrusionMaterial);
-
-      object.position.set(0, 0, 0);
-      scene.add(object);
-      const edges = new THREE.EdgesGeometry(geometry);
-      const line = new THREE.LineSegments(
-        edges,
-        new THREE.LineBasicMaterial({ color: 0xffffff })
-      );
-      scene.add(line);
-    };
 
     Papa.parse("/src/assets/cubes.csv", {
       download: true,
@@ -167,25 +90,35 @@ function ThreeScene() {
       dynamicTyping: true,
       complete: function (results) {
         if (results.data && results.data.length > 0) {
-          // Parse the first data point
-          let Polyline_ID = null;
-          let Polyline_Color = null;
-          // Move to the starting point
-          // Create profile for extrusion
-          let start_x = null;
-          let start_y = null;
-          let stop_x = null;
-          let stop_y = null;
+          let geometry = new THREE.BoxGeometry(1, 1, 1);
+          const material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+          const mesh = new THREE.InstancedMesh(
+            geometry,
+            material,
+            results.data.length / 2
+          );
+          mesh.rotation.x = -0.5 * Math.PI;
+          scene.add(mesh);
 
-          let beam_height = 4;
+          let start_x,
+            start_y,
+            stop_x,
+            stop_y,
+            Polyline_ID,
+            color = null;
+
+          let i = 0;
+          let beam_height = 2;
           let beam_width = 0.01;
+          const dummy = new THREE.Object3D();
+          dummy.scale.z = beam_height;
+          dummy.position.z = beam_height / 2;
+
           results.data.forEach((row) => {
             if (Polyline_ID !== row.Polyline_ID && Polyline_ID) {
-              let path = new THREE.LineCurve3(
-                new THREE.Vector3(start_x, start_y, beam_height),
-                new THREE.Vector3(stop_x, stop_y, beam_height)
-              );
-              create_line_shape(beam_height, beam_width, path, Polyline_Color);
+              mesh.setMatrixAt(i, dummy.matrix);
+              mesh.setColorAt(i, new THREE.Color(color));
+              i++;
             }
 
             if (row.Point_Index == 0) {
@@ -193,31 +126,32 @@ function ThreeScene() {
               start_y = parseFloat(row.Y);
 
               Polyline_ID = row.Polyline_ID;
-              Polyline_Color = row.Color;
+              color = row.Color;
             } else {
               stop_x = parseFloat(row.X);
               stop_y = parseFloat(row.Y);
+
+              const dx = start_x - stop_x;
+              const dy = start_y - stop_y;
+
+              const length = Math.sqrt(dx * dx + dy * dy);
+              const angleRad = Math.atan2(dy, dx);
+
+              const centerX = (start_x + stop_x) / 2;
+              const centerY = (start_y + stop_y) / 2;
+
+              dummy.scale.x = length;
+              dummy.scale.y = beam_width;
+              dummy.position.set(centerX, centerY);
+              dummy.rotation.z = angleRad;
+
+              dummy.updateMatrix();
+
+              start_x = stop_x;
+              start_y = stop_y;
             }
-
-            // Create a path for extrusion
-
-            // if (Polyline_ID !== row.Polyline_ID && Polyline_ID) {
-            //   create_object(polylineShape, Polyline_Color);
-            //   polylineShape = new THREE.Shape();
-            // }
-
-            // if (row.Point_Index == 0) {
-            //   const firstX = parseFloat(row.X);
-            //   const firstZ = parseFloat(row.Y);
-            //   polylineShape.moveTo(firstX, firstZ);
-            //   Polyline_ID = row.Polyline_ID;
-            //   Polyline_Color = row.Color;
-            // } else {
-            //   const x = parseFloat(row.X);
-            //   const z = parseFloat(row.Y);
-            //   polylineShape.lineTo(x, z);
-            // }
           });
+          mesh.instanceMatrix.needsUpdate = true;
         }
       },
     });
@@ -237,8 +171,8 @@ function ThreeScene() {
     // Load the texture
 
     const animateCube = () => {
-      cube_logo.rotation.y += 0.005; // Rotate the cube around the x-axis
-      cube_logo.rotation.z += 0.005; // Rotate the cube around the y-axis
+      cube_logo.rotation.y += 0.005;
+      cube_logo.rotation.z += 0.005;
     };
     cube_logo.position.set(23, 3, -12);
     scene.add(cube_logo);

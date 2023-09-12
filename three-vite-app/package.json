@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tweenjs/tween.js": "^21.0.0",
     "dat.gui": "^0.7.9",
     "meshline": "^3.1.6",
     "papaparse": "^5.4.1",
