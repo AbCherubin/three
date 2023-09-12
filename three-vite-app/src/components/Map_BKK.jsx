@@ -32,7 +32,9 @@ function Map_BKK() {
 
     const renderer = new THREE.WebGLRenderer();
     renderer.antialias = true;
+    renderer.setClearColor(0x000000); // Set background color
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio); // You can experiment with different values
     rendererRef.current = renderer;
     document.body.appendChild(renderer.domElement);
 
@@ -56,7 +58,7 @@ function Map_BKK() {
     // Create a directional light
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
     directionalLight.position.set(1, 7000, 3).multiplyScalar(3);
-    sceneRef.current.add(directionalLight);
+    // sceneRef.current.add(directionalLight);
     // Fetch and parse the KML data when the component mounts
     displayKMLData(bkk_map);
 
@@ -87,91 +89,91 @@ function Map_BKK() {
   // Display parsed KML data on a plane
   function displayKMLData(data) {
     // Create a plane geometry
-    const geometry = new THREE.PlaneGeometry(1000, 1000, 32, 32);
-    const material = new THREE.MeshBasicMaterial({
-      color: 0xffff00,
+    const geometry = new THREE.PlaneGeometry(8000, 4000, 32, 32);
+    const material = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
       side: THREE.DoubleSide,
     });
     const plane = new THREE.Mesh(geometry, material);
     plane.rotation.x = -Math.PI / 2;
     plane.position.set(0, 0, 0);
-    // sceneRef.current.add(plane);
+    //  sceneRef.current.add(plane);
 
     // Create a InstancedMesh
 
-    let count = 0;
     data.forEach((vertices) => {
-      if (
-        vertices.fid !== "375" &&
-        vertices.fid !== "1" &&
-        vertices.fid !== "374"
-      ) {
-        const polylineShape = new THREE.Shape(); // Create a single shape for the entire polyline
-        // Parse the first data point
-        const firstRow = vertices.coordinates[0];
-        const firstX = parseFloat(firstRow.x) - EPSG3857_offsetX;
-        const firstZ = parseFloat(firstRow.y) - EPSG3857_offsetY; // Use 'z' for the Y coordinate
+      const polylineShape = new THREE.Shape(); // Create a single shape for the entire polyline
+      // Parse the first data point
+      const firstRow = vertices.coordinates[0];
+      const firstX = parseFloat(firstRow.x) - EPSG3857_offsetX;
+      const firstZ = parseFloat(firstRow.y) - EPSG3857_offsetY; // Use 'z' for the Y coordinate
 
-        // Move to the starting point
-        polylineShape.moveTo(firstX, firstZ);
+      // Move to the starting point
+      polylineShape.moveTo(firstX, firstZ);
 
-        vertices.coordinates.slice(1).forEach((row) => {
-          // Parse X and Y coordinates from CSV
-          const x = parseFloat(row.x) - EPSG3857_offsetX;
-          const z = parseFloat(row.y) - EPSG3857_offsetY; // Use 'z' for the Y coordinate
+      vertices.coordinates.slice(1).forEach((row) => {
+        // Parse X and Y coordinates from CSV
+        const x = parseFloat(row.x) - EPSG3857_offsetX;
+        const z = parseFloat(row.y) - EPSG3857_offsetY; // Use 'z' for the Y coordinate
 
-          // Add points to the polyline shape
-          polylineShape.lineTo(x, z);
-        });
-        let depth;
+        // Add points to the polyline shape
+        polylineShape.lineTo(x, z);
+      });
+      let depth;
 
-        switch (vertices.layerOverlay) {
-          case 8:
-            depth = 0.2;
-            break;
-          case 9:
-            depth = 1;
-            break;
-          case 10:
-            depth = 10;
-            break;
-          case 11:
-            depth = 40;
-            break;
-          case 12:
-            depth = 45; // Set the depth for these values
-            break;
-          default:
-            depth = 0.2; // Default depth for other values
-            break;
-        }
-        const extrudeSettings = {
-          depth: depth, // Extrusion depth based on your yOffset
-          bevelEnabled: false,
-        };
-        const geometry = new THREE.ExtrudeGeometry(
-          polylineShape,
-          extrudeSettings
-        );
-
-        geometry.rotateX(-0.5 * Math.PI);
-        geometry.rotateY(EPSG3857_RotationY);
-        const extrusionMaterial = new THREE.MeshBasicMaterial({
-          color: new THREE.Color(vertices.color),
-          transparent: false, // Make the material transparent
-          opacity: 0.8,
-        });
-        extrusionMaterial.polygonOffset = true;
-        extrusionMaterial.polygonOffsetFactor = -0.2;
-        // Create a mesh with the red material
-        const object = new THREE.Mesh(geometry, extrusionMaterial);
-
-        // Position the object at (0, 0, 0) or adjust as needed
-
-        object.position.set(0, 0, 0);
-        sceneRef.current.add(object);
+      switch (vertices.layerOverlay) {
+        case 8:
+          depth = 0.2;
+          break;
+        case 9:
+          depth = 1;
+          break;
+        case 10:
+          depth = 10;
+          break;
+        case 11:
+          depth = 40;
+          break;
+        case 12:
+          depth = 45; // Set the depth for these values
+          break;
+        default:
+          depth = 0.2; // Default depth for other values
+          break;
       }
-      count++;
+      const extrudeSettings = {
+        depth: depth, // Extrusion depth based on your yOffset
+        bevelEnabled: false,
+      };
+      const geometry = new THREE.ExtrudeGeometry(
+        polylineShape,
+        extrudeSettings
+      );
+
+      geometry.rotateX(-0.5 * Math.PI);
+      geometry.rotateY(EPSG3857_RotationY);
+
+      const extrusionMaterial = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(vertices.color),
+        transparent: true,
+        opacity: 0.8,
+        depthTest: true,
+      });
+      // Create a mesh with the red material
+      const object = new THREE.Mesh(geometry, extrusionMaterial);
+
+      // Position the object at (0, 0, 0) or adjust as needed
+
+      object.position.set(0, 0, 0);
+
+      const edges = new THREE.EdgesGeometry(geometry);
+      const line = new THREE.LineSegments(
+        edges,
+        new THREE.LineBasicMaterial({ color: 0x0000ff, depthTest: true })
+      );
+      line.position.set(0, 10, 0);
+      sceneRef.current.add(line);
+      // sceneRef.current.add(object);
     });
   }
 
