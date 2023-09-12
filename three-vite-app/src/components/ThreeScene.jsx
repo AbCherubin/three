@@ -92,6 +92,8 @@ function ThreeScene() {
     const planeMaterial = new THREE.MeshBasicMaterial({
       map: texture,
       side: THREE.DoubleSide,
+      color: 0xf0f0f0,
+      specular: 0xf0f0f0,
       transparent: true, // Enable transparency
       opacity: 0.9,
     });
