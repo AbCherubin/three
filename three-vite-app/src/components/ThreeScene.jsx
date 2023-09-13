@@ -113,7 +113,7 @@ function ThreeScene() {
             color = null;
 
           let i = 0;
-          let beam_height = 2;
+          let beam_height = 4;
           let beam_width = 0.01;
           const dummy = new THREE.Object3D();
 
