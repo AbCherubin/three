@@ -1,6 +1,6 @@
-import {useRef, useEffect} from "react";
+import { useRef, useEffect } from "react";
 import * as THREE from "three";
-import {OrbitControls} from "three/examples/jsm/controls/OrbitControls.js";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import Papa from "papaparse";
 import * as TWEEN from "@tweenjs/tween.js";
 
@@ -13,7 +13,8 @@ function ThreeScene() {
     let isUpArrowKeyPressed = false;
     let animating = false;
     let displaying3D = false;
-
+    let isLeftArrowKeyPressed = false;
+    let isRightArrowKeyPressed = false;
     let list_dummy = [];
     // Create a scene
     scene = new THREE.Scene();
@@ -29,7 +30,7 @@ function ThreeScene() {
     camera.position.set(0, 50, 0);
 
     // Create a renderer
-    renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     //renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -97,7 +98,7 @@ function ThreeScene() {
       complete: function (results) {
         if (results.data && results.data.length > 0) {
           let geometry = new THREE.BoxGeometry(1, 1, 1);
-          const material = new THREE.MeshStandardMaterial({color: 0xffffff});
+          const material = new THREE.MeshStandardMaterial({ color: 0xffffff });
           mesh = new THREE.InstancedMesh(
             geometry,
             material,
@@ -207,7 +208,7 @@ function ThreeScene() {
           position_z: dummy.position.z,
         };
         const upMeshPosition = new TWEEN.Tween(mesh_current)
-          .to({scale_z: list_dummy[i].height}, t)
+          .to({ scale_z: list_dummy[i].height }, t)
           .onUpdate(() => {
             dummy.scale.z = mesh_current.scale_z;
             dummy.position.z = mesh_current.scale_z / 2;
@@ -248,7 +249,7 @@ function ThreeScene() {
         };
 
         const downMeshPosition = new TWEEN.Tween(mesh_current)
-          .to({scale_z: 0.001}, t)
+          .to({ scale_z: 0.001 }, t)
           .onUpdate(() => {
             dummy.scale.z = mesh_current.scale_z;
             dummy.position.z = mesh_current.scale_z / 2;
@@ -272,12 +273,9 @@ function ThreeScene() {
         .delay(timer)
         .start();
     }
-
-    function rotatePlane() {
+    function rotatePlaneRight() {
       const t = 1000;
-      const buffer_z = mesh.scale.z;
-      const buffer_x = mesh.scale.x;
-      const buffer_y = mesh.scale.y;
+      const buffer_rotation = plane.rotation.y;
       const current = {
         y_rotation: plane.rotation.y,
         z_scale: mesh.scale.z,
@@ -286,28 +284,62 @@ function ThreeScene() {
       };
 
       const tween1 = new TWEEN.Tween(current)
-        .to({y_rotation: Math.PI}, t)
+        .to({ y_rotation: buffer_rotation + Math.PI }, t)
         .onUpdate(() => {
           plane.rotation.y = current.y_rotation;
           mesh.rotation.y = current.y_rotation;
         })
         .easing(TWEEN.Easing.Sinusoidal.Out)
         .onComplete(() => {
-          plane.rotation.y = 0;
-          mesh.rotation.y = 0;
+          //plane.rotation.y = 0;
+          //mesh.rotation.y = 0;
+          plane.material.map = texture;
+          plane.material.needsUpdate = true;
+        });
+
+      const resetAnimate = new TWEEN.Tween(current).to({}, 0).onUpdate(() => {
+        animating = false;
+      });
+
+      tween1.start().chain(resetAnimate);
+    }
+    function rotatePlaneLeft() {
+      const t = 1000;
+      const buffer_z = mesh.scale.z;
+      const buffer_x = mesh.scale.x;
+      const buffer_y = mesh.scale.y;
+      const buffer_rotation = plane.rotation.y;
+      const current = {
+        y_rotation: plane.rotation.y,
+        z_scale: mesh.scale.z,
+        y_scale: mesh.scale.y,
+        x_scale: mesh.scale.x,
+      };
+
+      const tween1 = new TWEEN.Tween(current)
+        .to({ y_rotation: buffer_rotation - Math.PI }, t)
+        .onUpdate(() => {
+          plane.rotation.y = current.y_rotation;
+          mesh.rotation.y = current.y_rotation;
+          console.log(current.y_rotation);
+        })
+        .easing(TWEEN.Easing.Sinusoidal.Out)
+        .onComplete(() => {
+          //plane.rotation.y = 0;
+          //mesh.rotation.y = 0;
           plane.material.map = texture;
           plane.material.needsUpdate = true;
         });
 
       const tween2 = new TWEEN.Tween(current)
-        .to({z_scale: 0}, t / 8)
+        .to({ z_scale: 0 }, t / 8)
         .onUpdate(() => {
           // mesh.scale.z = current.z_scale;
         })
         .onComplete(() => {});
 
       const resetMeshPosition = new TWEEN.Tween(current)
-        .to({z_scale: buffer_z, y_scale: buffer_y, x_scale: buffer_x}, t / 4)
+        .to({ z_scale: buffer_z, y_scale: buffer_y, x_scale: buffer_x }, t / 4)
         .onUpdate(() => {
           mesh.scale.z = current.z_scale;
           mesh.scale.y = current.y_scale;
@@ -316,37 +348,10 @@ function ThreeScene() {
 
       const resetAnimate = new TWEEN.Tween(current).to({}, 0).onUpdate(() => {
         animating = false;
-        isDownArrowKeyPressed = false;
       });
 
-      //tween1.start().chain(resetAnimate);
-      // tween2.start();
-
-      // let dummy = new THREE.Object3D();
-      // let mat4 = new THREE.Matrix4();
-      // let random_rate;
-      // console.log(mesh.getMatrixAt(1, mat4));
-      // for (let i = 0; i < mesh.count; i++) {
-      //   random_rate = 1000 + Math.random() * 1000;
-      //   mesh.getMatrixAt(i, mat4);
-
-      //   mat4.decompose(dummy.position, dummy.quaternion, dummy.scale);
-
-      //   const current = {
-      //     z_scale: dummy.scale.z,
-      //   };
-
-      //   const downMeshPosition = new TWEEN.Tween(current)
-      //     .to({z_scale: 0}, random_rate)
-      //     .onUpdate(() => {
-      //       dummy.scale.z = current.z_scale;
-      //       dummy.updateMatrix();
-      //       mesh.setMatrixAt(i, dummy.matrix);
-      //       //console.log(mesh.getMatrixAt(i, mat4));
-      //     });
-      //   mesh.instanceMatrix.needsUpdate = true;
-      //   downMeshPosition.start();
-      // }
+      tween1.start().chain(resetAnimate);
+      tween2.start();
     }
 
     const animate = () => {
@@ -363,7 +368,18 @@ function ThreeScene() {
         MeshGoUp();
         isUpArrowKeyPressed = false;
       }
+      if (isLeftArrowKeyPressed) {
+        animating = true;
 
+        rotatePlaneLeft();
+        isLeftArrowKeyPressed = false;
+      }
+      if (isRightArrowKeyPressed) {
+        animating = true;
+
+        rotatePlaneRight();
+        isRightArrowKeyPressed = false;
+      }
       animateCube();
       TWEEN.update();
       controls.update();
@@ -377,12 +393,21 @@ function ThreeScene() {
         isDownArrowKeyPressed = true;
       }
     });
-    document.addEventListener("keyup", (event) => {
+    document.addEventListener("keydown", (event) => {
       if (event.key === "ArrowUp" && !animating && !displaying3D) {
         isUpArrowKeyPressed = true;
       }
     });
-
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowLeft" && !animating) {
+        isLeftArrowKeyPressed = true;
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowRight" && !animating) {
+        isRightArrowKeyPressed = true;
+      }
+    });
     window.onresize = function () {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
