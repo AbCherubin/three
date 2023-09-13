@@ -1,14 +1,20 @@
-import { useRef, useEffect } from "react";
+import {useRef, useEffect} from "react";
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import {OrbitControls} from "three/examples/jsm/controls/OrbitControls.js";
 import Papa from "papaparse";
+import * as TWEEN from "@tweenjs/tween.js";
 
 function ThreeScene() {
   const sceneRef = useRef(null);
 
   useEffect(() => {
-    let scene, camera, renderer;
+    let scene, camera, renderer, mesh;
+    let isDownArrowKeyPressed = false;
+    let isUpArrowKeyPressed = false;
+    let animating = false;
+    let displaying3D = false;
 
+    let list_dummy = [];
     // Create a scene
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf0f0f0);
@@ -23,7 +29,7 @@ function ThreeScene() {
     camera.position.set(0, 50, 0);
 
     // Create a renderer
-    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.setPixelRatio(window.devicePixelRatio);
     //renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -91,8 +97,8 @@ function ThreeScene() {
       complete: function (results) {
         if (results.data && results.data.length > 0) {
           let geometry = new THREE.BoxGeometry(1, 1, 1);
-          const material = new THREE.MeshStandardMaterial({ color: 0xffffff });
-          const mesh = new THREE.InstancedMesh(
+          const material = new THREE.MeshStandardMaterial({color: 0xffffff});
+          mesh = new THREE.InstancedMesh(
             geometry,
             material,
             results.data.length / 2
@@ -104,28 +110,17 @@ function ThreeScene() {
             start_y,
             stop_x,
             stop_y,
-            Polyline_ID,
             color = null;
 
           let i = 0;
           let beam_height = 2;
           let beam_width = 0.01;
           const dummy = new THREE.Object3D();
-          dummy.scale.z = beam_height;
-          dummy.position.z = beam_height / 2;
 
           results.data.forEach((row) => {
-            if (Polyline_ID !== row.Polyline_ID && Polyline_ID) {
-              mesh.setMatrixAt(i, dummy.matrix);
-              mesh.setColorAt(i, new THREE.Color(color));
-              i++;
-            }
-
             if (row.Point_Index == 0) {
               start_x = parseFloat(row.X);
               start_y = parseFloat(row.Y);
-
-              Polyline_ID = row.Polyline_ID;
               color = row.Color;
             } else {
               stop_x = parseFloat(row.X);
@@ -144,11 +139,24 @@ function ThreeScene() {
               dummy.scale.y = beam_width;
               dummy.position.set(centerX, centerY);
               dummy.rotation.z = angleRad;
+              dummy.updateMatrix();
+              list_dummy.push({
+                height: beam_height,
+                color: color,
+              });
+
+              dummy.scale.z = 0.001;
+              dummy.position.z = 0.001 / 2;
 
               dummy.updateMatrix();
 
               start_x = stop_x;
               start_y = stop_y;
+
+              mesh.setMatrixAt(i, dummy.matrix);
+              mesh.setColorAt(i, new THREE.Color("#ffffff"));
+
+              i++;
             }
           });
           mesh.instanceMatrix.needsUpdate = true;
@@ -167,24 +175,213 @@ function ThreeScene() {
     const cube_logo = new THREE.Mesh(cubeGeometry, cubeMaterial);
     cube_logo.castShadow = true;
     cube_logo.receiveShadow = true;
-
-    // Load the texture
+    cube_logo.position.set(23, 3, -12);
+    scene.add(cube_logo);
 
     const animateCube = () => {
       cube_logo.rotation.y += 0.005;
       cube_logo.rotation.z += 0.005;
     };
-    cube_logo.position.set(23, 3, -12);
-    scene.add(cube_logo);
-    // Animation loop
+
+    function MeshGoUp() {
+      let timer = 3000;
+
+      for (let i = 0; i < mesh.count; i++) {
+        let dummy = new THREE.Object3D();
+        let mat4 = new THREE.Matrix4();
+        let t = 2000;
+        const startColor = new THREE.Color(0xffffff); // Red
+        const endColor = new THREE.Color(list_dummy[i].color); // Green
+        const colorTween = new TWEEN.Tween(startColor)
+          .to(endColor, 0)
+          .onUpdate(() => {
+            mesh.setColorAt(i, startColor);
+            mesh.instanceColor.needsUpdate = true;
+          });
+
+        mesh.getMatrixAt(i, mat4);
+        mat4.decompose(dummy.position, dummy.quaternion, dummy.scale);
+
+        const mesh_current = {
+          scale_z: dummy.scale.z,
+          position_z: dummy.position.z,
+        };
+        const upMeshPosition = new TWEEN.Tween(mesh_current)
+          .to({scale_z: list_dummy[i].height}, t)
+          .onUpdate(() => {
+            dummy.scale.z = mesh_current.scale_z;
+            dummy.position.z = mesh_current.scale_z / 2;
+            dummy.updateMatrix();
+            mesh.setMatrixAt(i, dummy.matrix);
+            mesh.instanceMatrix.needsUpdate = true;
+          })
+          .easing(TWEEN.Easing.Exponential.Out)
+          .onComplete(() => {
+            // mesh.setColorAt(i, new THREE.Color(list_dummy[i].color));
+            // mesh.instanceColor.needsUpdate = true;
+          })
+          .start()
+          .chain(colorTween);
+      }
+
+      const resetAnimate = new TWEEN.Tween()
+        .to({}, 0)
+        .onUpdate(() => {
+          animating = false;
+        })
+        .delay(timer)
+        .start();
+    }
+
+    function MeshGoDown() {
+      let timer = 2000;
+      for (let i = 0; i < mesh.count; i++) {
+        let dummy = new THREE.Object3D();
+        let mat4 = new THREE.Matrix4();
+        let t = Math.random() * timer;
+        mesh.getMatrixAt(i, mat4);
+        mat4.decompose(dummy.position, dummy.quaternion, dummy.scale);
+
+        const mesh_current = {
+          scale_z: dummy.scale.z,
+          position_z: dummy.position.z,
+        };
+
+        const downMeshPosition = new TWEEN.Tween(mesh_current)
+          .to({scale_z: 0.001}, t)
+          .onUpdate(() => {
+            dummy.scale.z = mesh_current.scale_z;
+            dummy.position.z = mesh_current.scale_z / 2;
+            dummy.updateMatrix();
+            mesh.setMatrixAt(i, dummy.matrix);
+            mesh.instanceMatrix.needsUpdate = true;
+          })
+          .easing(TWEEN.Easing.Sinusoidal.Out)
+          .onStart(() => {
+            mesh.setColorAt(i, new THREE.Color("#ffffff"));
+            mesh.instanceColor.needsUpdate = true;
+          })
+          .start();
+      }
+
+      const resetAnimate = new TWEEN.Tween()
+        .to({}, 0)
+        .onUpdate(() => {
+          animating = false;
+        })
+        .delay(timer)
+        .start();
+    }
+
+    function rotatePlane() {
+      const t = 1000;
+      const buffer_z = mesh.scale.z;
+      const buffer_x = mesh.scale.x;
+      const buffer_y = mesh.scale.y;
+      const current = {
+        y_rotation: plane.rotation.y,
+        z_scale: mesh.scale.z,
+        y_scale: mesh.scale.y,
+        x_scale: mesh.scale.x,
+      };
+
+      const tween1 = new TWEEN.Tween(current)
+        .to({y_rotation: Math.PI}, t)
+        .onUpdate(() => {
+          plane.rotation.y = current.y_rotation;
+          mesh.rotation.y = current.y_rotation;
+        })
+        .easing(TWEEN.Easing.Sinusoidal.Out)
+        .onComplete(() => {
+          plane.rotation.y = 0;
+          mesh.rotation.y = 0;
+          plane.material.map = texture;
+          plane.material.needsUpdate = true;
+        });
+
+      const tween2 = new TWEEN.Tween(current)
+        .to({z_scale: 0}, t / 8)
+        .onUpdate(() => {
+          // mesh.scale.z = current.z_scale;
+        })
+        .onComplete(() => {});
+
+      const resetMeshPosition = new TWEEN.Tween(current)
+        .to({z_scale: buffer_z, y_scale: buffer_y, x_scale: buffer_x}, t / 4)
+        .onUpdate(() => {
+          mesh.scale.z = current.z_scale;
+          mesh.scale.y = current.y_scale;
+          mesh.scale.x = current.x_scale;
+        });
+
+      const resetAnimate = new TWEEN.Tween(current).to({}, 0).onUpdate(() => {
+        animating = false;
+        isDownArrowKeyPressed = false;
+      });
+
+      //tween1.start().chain(resetAnimate);
+      // tween2.start();
+
+      // let dummy = new THREE.Object3D();
+      // let mat4 = new THREE.Matrix4();
+      // let random_rate;
+      // console.log(mesh.getMatrixAt(1, mat4));
+      // for (let i = 0; i < mesh.count; i++) {
+      //   random_rate = 1000 + Math.random() * 1000;
+      //   mesh.getMatrixAt(i, mat4);
+
+      //   mat4.decompose(dummy.position, dummy.quaternion, dummy.scale);
+
+      //   const current = {
+      //     z_scale: dummy.scale.z,
+      //   };
+
+      //   const downMeshPosition = new TWEEN.Tween(current)
+      //     .to({z_scale: 0}, random_rate)
+      //     .onUpdate(() => {
+      //       dummy.scale.z = current.z_scale;
+      //       dummy.updateMatrix();
+      //       mesh.setMatrixAt(i, dummy.matrix);
+      //       //console.log(mesh.getMatrixAt(i, mat4));
+      //     });
+      //   mesh.instanceMatrix.needsUpdate = true;
+      //   downMeshPosition.start();
+      // }
+    }
+
     const animate = () => {
       requestAnimationFrame(animate);
+      if (isDownArrowKeyPressed) {
+        animating = true;
+        displaying3D = false;
+        MeshGoDown();
+        isDownArrowKeyPressed = false;
+      }
+      if (isUpArrowKeyPressed) {
+        animating = true;
+        displaying3D = true;
+        MeshGoUp();
+        isUpArrowKeyPressed = false;
+      }
+
       animateCube();
+      TWEEN.update();
       controls.update();
       renderer.render(scene, camera);
     };
 
     animate();
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown" && !animating && displaying3D) {
+        isDownArrowKeyPressed = true;
+      }
+    });
+    document.addEventListener("keyup", (event) => {
+      if (event.key === "ArrowUp" && !animating && !displaying3D) {
+        isUpArrowKeyPressed = true;
+      }
+    });
 
     window.onresize = function () {
       camera.aspect = window.innerWidth / window.innerHeight;
