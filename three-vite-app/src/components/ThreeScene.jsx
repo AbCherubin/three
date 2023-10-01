@@ -87,7 +87,7 @@ function ThreeScene() {
     controls.update();
 
     // Create plane
-    const planeGeometry = new THREE.PlaneGeometry(2202 / 52.1, 1560 / 52.1);
+    const planeGeometry = new THREE.PlaneGeometry(12885/52.1, 1097/52.1);
     const texture = new THREE.TextureLoader().load("/src/assets/plan.png");
     const planeMaterial = new THREE.MeshBasicMaterial({
       map: texture,
